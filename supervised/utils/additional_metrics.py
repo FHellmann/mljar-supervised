@@ -35,9 +35,9 @@ from tabulate import tabulate
 
 from supervised.fairness.metrics import FairnessMetrics
 from supervised.fairness.report import FairnessReport
-from supervised.utils.additional_plots import AdditionalPlots
+from supervised.report.additional_plots import AdditionalPlots
 from supervised.utils.common import construct_learner_name, get_fold_repeat_cnt
-from supervised.utils.learning_curves import LearningCurves
+from supervised.report.learning_curves import LearningCurves
 from supervised.utils.jsonencoder import MLJSONEncoder
 
 

@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 
 import warnings
 
@@ -12,11 +12,11 @@ class CategoricalIntegersTest(unittest.TestCase):
         """
         Check if PreprocessingCategorical object is properly initialized
         """
-        categorical = PreprocessingCategorical(
-            [], PreprocessingCategorical.CONVERT_INTEGER
+        categorical = CategoricalTransformer(
+            [], CategoricalTransformer.CONVERT_INTEGER
         )
         self.assertEqual(
-            categorical._convert_method, PreprocessingCategorical.CONVERT_INTEGER
+            categorical._convert_method, CategoricalTransformer.CONVERT_INTEGER
         )
         self.assertEqual(categorical._convert_params, {})
 
@@ -29,8 +29,8 @@ class CategoricalIntegersTest(unittest.TestCase):
             "col4": ["a", "b", "c"],
         }
         df = pd.DataFrame(data=d)
-        categorical = PreprocessingCategorical(
-            df.columns, PreprocessingCategorical.CONVERT_INTEGER
+        categorical = CategoricalTransformer(
+            df.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         categorical.fit(df)
 
@@ -52,8 +52,8 @@ class CategoricalIntegersTest(unittest.TestCase):
             "col4": ["a", "b", "c"],
         }
         df = pd.DataFrame(data=d)
-        categorical = PreprocessingCategorical(
-            df.columns, PreprocessingCategorical.CONVERT_INTEGER
+        categorical = CategoricalTransformer(
+            df.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         categorical.fit(df)
         df = categorical.transform(df)
@@ -77,8 +77,8 @@ class CategoricalIntegersTest(unittest.TestCase):
                 "col3": [True, False, True],
             }
             df = pd.DataFrame(data=d)
-            categorical = PreprocessingCategorical(
-                df.columns, PreprocessingCategorical.CONVERT_INTEGER
+            categorical = CategoricalTransformer(
+                df.columns, CategoricalTransformer.CONVERT_INTEGER
             )
             categorical.fit(df)
 
@@ -95,8 +95,8 @@ class CategoricalIntegersTest(unittest.TestCase):
                 "col3": [True, False, True],
             }
             df = pd.DataFrame(data=d)
-            categorical = PreprocessingCategorical(
-                df.columns, PreprocessingCategorical.CONVERT_INTEGER
+            categorical = CategoricalTransformer(
+                df.columns, CategoricalTransformer.CONVERT_INTEGER
             )
             categorical.fit(df)
 
@@ -112,8 +112,8 @@ class CategoricalIntegersTest(unittest.TestCase):
             "col4": ["a", "b", "c"],
         }
         df = pd.DataFrame(data=d)
-        categorical = PreprocessingCategorical(
-            df.columns, PreprocessingCategorical.CONVERT_INTEGER
+        categorical = CategoricalTransformer(
+            df.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         categorical.fit(df)
         df_transform = categorical.transform(df).astype(int)
@@ -136,8 +136,8 @@ class CategoricalIntegersTest(unittest.TestCase):
             "col4": ["a", "b", "c"],
         }
         df_train = pd.DataFrame(data=d_train)
-        categorical = PreprocessingCategorical(
-            df_train.columns, PreprocessingCategorical.CONVERT_INTEGER
+        categorical = CategoricalTransformer(
+            df_train.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         categorical.fit(df_train)
         # testing data
@@ -167,13 +167,13 @@ class CategoricalIntegersTest(unittest.TestCase):
             "col4": ["a", "b", "c"],
         }
         df = pd.DataFrame(data=d)
-        cat1 = PreprocessingCategorical(
-            df.columns, PreprocessingCategorical.CONVERT_INTEGER
+        cat1 = CategoricalTransformer(
+            df.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         cat1.fit(df)
 
-        cat2 = PreprocessingCategorical(
-            df.columns, PreprocessingCategorical.CONVERT_INTEGER
+        cat2 = CategoricalTransformer(
+            df.columns, CategoricalTransformer.CONVERT_INTEGER
         )
         cat2.from_json(cat1.to_json())
         df = cat2.transform(df)

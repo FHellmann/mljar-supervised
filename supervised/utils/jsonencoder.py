@@ -27,7 +27,7 @@ class MLJSONEncoder(json.JSONEncoder):
             return float(o)
         elif isinstance(o, np.ndarray):
             return o.tolist()
-        elif isinstance(obj, date):
-            return obj.strftime("%Y-%m-%d")
+        elif isinstance(o, date):
+            return o.strftime("%Y-%m-%d")
 
         return super(MLJSONEncoder, self).default(o)

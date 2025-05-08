@@ -63,7 +63,7 @@ class LabelBinarizer(BaseTransformer, AttributeSerializer):
         return super().to_dict(exclude_callables_nones, exclude_attributes,
                                _uniq_values=lambda x: [str(i) for i in list(x)], **attribute_encoders)
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(data_json,
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        super().from_dict(params,
                           _uniq_values=lambda x: [False, True] if "True" in x and "False" in x and len(x) == 2 else x,
                           **attribute_decoders)

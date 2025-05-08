@@ -25,7 +25,7 @@ logger.setLevel(LOG_LEVEL)
 
 from tabulate import tabulate
 
-from supervised.utils.learning_curves import LearningCurves
+from supervised.report.learning_curves import LearningCurves
 
 
 class Ensemble:

@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 
 from supervised.preprocessing.encoding_selector import EncodingSelector
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 
 
 class CategoricalIntegersTest(unittest.TestCase):
@@ -13,9 +13,9 @@ class CategoricalIntegersTest(unittest.TestCase):
 
         self.assertEqual(
             EncodingSelector.get(df, None, "col1"),
-            PreprocessingCategorical.MANY_CATEGORIES,
+            CategoricalTransformer.MANY_CATEGORIES,
         )
         self.assertEqual(
             EncodingSelector.get(df, None, "col2"),
-            PreprocessingCategorical.FEW_CATEGORIES,
+            CategoricalTransformer.FEW_CATEGORIES,
         )

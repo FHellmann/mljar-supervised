@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from supervised.preprocessing.label_binarizer import LabelBinarizer
+from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
 
 
 class LabelBinarizerTest(unittest.TestCase):

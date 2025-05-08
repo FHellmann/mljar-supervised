@@ -17,7 +17,7 @@ class TimeControllerTest(unittest.TestCase):
         )
         tc.log_time("1_Baseline", "Baseline", "simple_algorithms", 123.1)
 
-        tc2 = TimeController.from_json(tc.to_json())
+        tc2 = TimeController.from_json(tc.to_dict())
 
         assert_almost_equal(tc2.step_spend("simple_algorithms"), 123.1)
         assert_almost_equal(tc2.model_spend("Baseline"), 123.1)

@@ -1,12 +1,14 @@
+from typing import List, Callable, Any, Dict
+
 import numpy as np
 import pandas as pd
 
-from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
+from supervised.utils.attribute_serializer import AttributeSerializer
 
 
-class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
+class MissingValuesTransformer(BaseTransformer, AttributeSerializer):
     FILL_NA_MIN = "na_fill_min_1"
     FILL_NA_MEAN = "na_fill_mean"
     FILL_NA_MEDIAN = "na_fill_median"
@@ -25,7 +27,9 @@ class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
         self._datetime_columns = []
 
     def fit(self, X):
-        # _fit_na_fill
+        self._fit_na_fill(X)
+
+    def _fit_na_fill(self, X):
         for column in self._columns:
             if np.sum(pd.isnull(X[column]) == True) == 0:
                 continue
@@ -36,9 +40,9 @@ class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
     def _get_fill_value(self, x):
         # categorical type
         if PreprocessingUtils.get_type(x) == PreprocessingUtils.CATEGORICAL:
-            if self._na_fill_method == PreprocessingMissingValues.FILL_NA_MIN:
+            if self._na_fill_method == MissingValuesTransformer.FILL_NA_MIN:
                 return (
-                    PreprocessingMissingValues.MISSING_VALUE
+                    MissingValuesTransformer.MISSING_VALUE
                 )  # add new categorical value
             return PreprocessingUtils.get_most_frequent(x)
         # datetime
@@ -46,12 +50,12 @@ class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
             return PreprocessingUtils.get_most_frequent(x)
         # text
         if PreprocessingUtils.get_type(x) == PreprocessingUtils.TEXT:
-            return PreprocessingMissingValues.MISSING_VALUE
+            return MissingValuesTransformer.MISSING_VALUE
 
         # numerical type
-        if self._na_fill_method == PreprocessingMissingValues.FILL_NA_MIN:
+        if self._na_fill_method == MissingValuesTransformer.FILL_NA_MIN:
             return PreprocessingUtils.get_min(x) - 1.0
-        if self._na_fill_method == PreprocessingMissingValues.FILL_NA_MEAN:
+        if self._na_fill_method == MissingValuesTransformer.FILL_NA_MEAN:
             return PreprocessingUtils.get_mean(x)
         return PreprocessingUtils.get_median(x)
 
@@ -72,26 +76,20 @@ class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
         self._fit_na_fill(X)
         return self._transform_na_fill(X)
 
-    def to_json(self):
-        # prepare json with all parameters
+    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
+                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
         if len(self._na_fill_params) == 0:
             return {}
-        params = {
-            "fill_method": self._na_fill_method,
-            "fill_params": self._na_fill_params,
-            "datetime_columns": list(self._datetime_columns),
-        }
-        for col in self._datetime_columns:
-            params["fill_params"][col] = str(params["fill_params"][col])
-        return params
+        return super().to_dict(exclude_callables_nones, exclude_attributes,
+                               _datetime_columns=lambda x: list(x),
+                               _na_fill_params=lambda x: {key: str(value) for key, value in x.items()},
+                               **attribute_encoders)
 
-    def from_json(self, params):
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
         if params is not None:
-            self._na_fill_method = params.get("fill_method", None)
-            self._na_fill_params = params.get("fill_params", {})
-            self._datetime_columns = params.get("datetime_columns", [])
-            for col in self._datetime_columns:
-                self._na_fill_params[col] = pd.to_datetime(self._na_fill_params[col])
+            super().from_dict(params,
+                              _na_fill_params=lambda x: {key: pd.to_datetime(value) for key, value in x.items()},
+                              **attribute_decoders)
         else:
             self._na_fill_method, self._na_fill_params = None, None
             self._datetime_columns = []

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 
-from supervised.utils.importance import PermutationImportance
+from supervised.report.importance import PermutationImportance
 
 
 class PermutationImportanceTest(unittest.TestCase):

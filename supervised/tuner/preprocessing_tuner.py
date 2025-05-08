@@ -3,9 +3,9 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
 )
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
-from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
-from supervised.preprocessing.scale import Scale
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
+from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
+from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
 
 
 class PreprocessingTuner:
@@ -45,7 +45,7 @@ class PreprocessingTuner:
                 "missing_values_inputation" in required_preprocessing
                 and "missing_values" in preprocessing_needed
             ):
-                preprocessing_to_apply += [PreprocessingMissingValues.FILL_NA_MEDIAN]
+                preprocessing_to_apply += [MissingValuesTransformer.FILL_NA_MEDIAN]
             # convert to categorical only for categorical types
             convert_to_integer_will_be_applied = False
             if (
@@ -54,21 +54,21 @@ class PreprocessingTuner:
                 and "categorical" in preprocessing_needed  # the feature is categorical
             ):
                 if categorical_strategy == PreprocessingTuner.CATEGORICALS_MIX:
-                    if PreprocessingCategorical.MANY_CATEGORIES in preprocessing_needed:
+                    if CategoricalTransformer.MANY_CATEGORIES in preprocessing_needed:
                         preprocessing_to_apply += [
-                            PreprocessingCategorical.CONVERT_INTEGER
+                            CategoricalTransformer.CONVERT_INTEGER
                         ]
                         convert_to_integer_will_be_applied = True  # maybe scale needed
                     else:
                         preprocessing_to_apply += [
-                            PreprocessingCategorical.CONVERT_ONE_HOT
+                            CategoricalTransformer.CONVERT_ONE_HOT
                         ]
 
                 elif categorical_strategy == PreprocessingTuner.CATEGORICALS_LOO:
-                    preprocessing_to_apply += [PreprocessingCategorical.CONVERT_LOO]
+                    preprocessing_to_apply += [CategoricalTransformer.CONVERT_LOO]
                     convert_to_integer_will_be_applied = True  # maybe scale needed
                 else:  # all integers
-                    preprocessing_to_apply += [PreprocessingCategorical.CONVERT_INTEGER]
+                    preprocessing_to_apply += [CategoricalTransformer.CONVERT_INTEGER]
                     convert_to_integer_will_be_applied = True  # maybe scale needed
 
                 """
@@ -98,7 +98,7 @@ class PreprocessingTuner:
                     convert_to_integer_will_be_applied
                     or "scale" in preprocessing_needed
                 ):
-                    preprocessing_to_apply += [Scale.SCALE_NORMAL]
+                    preprocessing_to_apply += [ScaleTransformer.SCALE_NORMAL]
 
             # remeber which preprocessing we need to apply
             if preprocessing_to_apply:
@@ -108,12 +108,12 @@ class PreprocessingTuner:
         target_preprocessing = []
         # always remove missing values from target,
         # target with missing values might be in the train and in the validation datasets
-        target_preprocessing += [PreprocessingMissingValues.NA_EXCLUDE]
+        target_preprocessing += [MissingValuesTransformer.NA_EXCLUDE]
 
         if "target_as_integer" in required_preprocessing:
             if machinelearning_task == BINARY_CLASSIFICATION:
                 if "convert_0_1" in target_info:
-                    target_preprocessing += [PreprocessingCategorical.CONVERT_INTEGER]
+                    target_preprocessing += [CategoricalTransformer.CONVERT_INTEGER]
 
             if machinelearning_task == MULTICLASS_CLASSIFICATION:
                 # if PreprocessingUtils.is_categorical(y):
@@ -121,19 +121,19 @@ class PreprocessingTuner:
                 # for example, classes starting from 1, ...
                 # or classes not for every number, for example 0,2,3,4
                 # just always convert
-                target_preprocessing += [PreprocessingCategorical.CONVERT_INTEGER]
+                target_preprocessing += [CategoricalTransformer.CONVERT_INTEGER]
 
         elif "target_as_one_hot" in required_preprocessing:
-            target_preprocessing += [PreprocessingCategorical.CONVERT_ONE_HOT]
+            target_preprocessing += [CategoricalTransformer.CONVERT_ONE_HOT]
 
         if (
             machinelearning_task == REGRESSION
             and "target_scale" in required_preprocessing
         ):
             if "scale_log" in target_info:
-                target_preprocessing += [Scale.SCALE_LOG_AND_NORMAL]
+                target_preprocessing += [ScaleTransformer.SCALE_LOG_AND_NORMAL]
             elif "scale" in target_info:
-                target_preprocessing += [Scale.SCALE_NORMAL]
+                target_preprocessing += [ScaleTransformer.SCALE_NORMAL]
 
         return {
             "columns_preprocessing": columns_preprocessing,

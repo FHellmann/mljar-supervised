@@ -4,7 +4,7 @@ from typing import Optional
 
 import joblib
 
-from supervised.preprocessing.attribute_serializer import AttributeSerializer
+from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.utils import MLJSONEncoder
 
 
@@ -43,7 +43,7 @@ class AttributeStorage(AttributeSerializer):
         Raises:
             AttributeError: If _result_path is not set.
         """
-        if self._has_callable_attr():
+        if len(self.get_callable_attrs()) > 0:
             # Save everything as joblib
             joblib_file = f"{self._result_path}.joblib"
             joblib.dump(

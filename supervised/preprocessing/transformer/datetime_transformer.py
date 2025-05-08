@@ -97,6 +97,6 @@ class DateTimeTransformer(BaseTransformer, AttributeSerializer):
         X.drop(column, axis=1, inplace=True)
         return X
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(data_json, _min_datetime=lambda x: None if x is None else pd.to_datetime(x),
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        super().from_dict(params, _min_datetime=lambda x: None if x is None else pd.to_datetime(x),
                           **attribute_decoders)

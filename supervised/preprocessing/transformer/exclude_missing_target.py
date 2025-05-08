@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 
 from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.utils.config import LOG_LEVEL
@@ -11,8 +12,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
 
-class ExcludeRowsMissingTarget(BaseTransformer):
-    def transform(self, X=None, y=None, sample_weight=None, sensitive_features=None, warn=False):
+class ExcludeRowsMissingTargetTransformer(BaseTransformer):
+    def fit(self, X: DataFrame, y: DataFrame = None, **kwargs) -> None:
+        pass
+
+    def transform(self, X: DataFrame = None, y: DataFrame = None, sample_weight=None, sensitive_features=None,
+                  warn=False):
         if y is None:
             return X, y, sample_weight, sensitive_features
         y_missing = pd.isnull(y)

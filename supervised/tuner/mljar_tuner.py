@@ -16,8 +16,8 @@ from supervised.algorithms.registry import (
     AlgorithmsRegistry,
 )
 from supervised.algorithms.xgboost import xgboost_eval_metric
-from supervised.preprocessing.label_encoder import LabelEncoder
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
+from supervised.preprocessing.transformer.label_encoder import LabelEncoder
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 from supervised.tuner.hill_climbing import HillClimbing
 from supervised.tuner.preprocessing_tuner import PreprocessingTuner
 from supervised.tuner.random_parameters import RandomParameters
@@ -100,7 +100,7 @@ class MljarTuner:
             #    strategies += [PreprocessingTuner.CATEGORICALS_LOO]
 
             if (
-                PreprocessingCategorical.FEW_CATEGORIES in v
+                CategoricalTransformer.FEW_CATEGORIES in v
                 and PreprocessingTuner.CATEGORICALS_MIX not in strategies
                 and self._mix_encoding
             ):
@@ -312,7 +312,7 @@ class MljarTuner:
                 .params.get("preprocessing", {})
                 .get("target_preprocessing", {})
             )
-            if PreprocessingCategorical.CONVERT_INTEGER in target_preprocessing:
+            if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
                 cat_y = LabelEncoder(try_to_fit_numeric=True)
                 cat_y.fit(target)
                 target = cat_y.transform(target)
@@ -1039,17 +1039,17 @@ class MljarTuner:
 
                     if convert_categorical:
                         if strategy == PreprocessingTuner.CATEGORICALS_ALL_INT:
-                            new_preproc += [PreprocessingCategorical.CONVERT_INTEGER]
+                            new_preproc += [CategoricalTransformer.CONVERT_INTEGER]
                         elif strategy == PreprocessingTuner.CATEGORICALS_LOO:
-                            new_preproc += [PreprocessingCategorical.CONVERT_LOO]
+                            new_preproc += [CategoricalTransformer.CONVERT_LOO]
                         elif strategy == PreprocessingTuner.CATEGORICALS_MIX:
                             if few_categories:
                                 new_preproc += [
-                                    PreprocessingCategorical.CONVERT_ONE_HOT
+                                    CategoricalTransformer.CONVERT_ONE_HOT
                                 ]
                             else:
                                 new_preproc += [
-                                    PreprocessingCategorical.CONVERT_INTEGER
+                                    CategoricalTransformer.CONVERT_INTEGER
                                 ]
 
                     cols_preprocessing[col] = new_preproc

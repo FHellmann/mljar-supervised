@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from supervised.preprocessing.datetime_transformer import DateTimeTransformer
+from supervised.preprocessing.transformer.datetime_transformer import DateTimeTransformer
 
 
 class DateTimeTransformerTest(unittest.TestCase):

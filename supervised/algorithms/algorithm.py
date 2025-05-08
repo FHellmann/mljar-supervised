@@ -5,8 +5,8 @@ import numpy as np
 from sklearn.base import BaseEstimator
 
 from supervised.utils.common import construct_learner_name
-from supervised.utils.importance import PermutationImportance
-from supervised.utils.shap import PlotSHAP
+from supervised.report.importance import PermutationImportance
+from supervised.report.shap import PlotSHAP
 
 
 class BaseAlgorithm(BaseEstimator):

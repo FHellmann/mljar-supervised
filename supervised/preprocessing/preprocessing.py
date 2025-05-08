@@ -8,18 +8,18 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
 )
 from supervised.exceptions import AutoMLException
-from supervised.preprocessing.datetime_transformer import DateTimeTransformer
-from supervised.preprocessing.exclude_missing_target import ExcludeRowsMissingTarget
-from supervised.preprocessing.goldenfeatures_transformer import (
+from supervised.preprocessing.transformer.datetime_transformer import DateTimeTransformer
+from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
+from supervised.preprocessing.transformer.goldenfeatures_transformer import (
     GoldenFeaturesTransformer,
 )
-from supervised.preprocessing.kmeans_transformer import KMeansTransformer
-from supervised.preprocessing.label_binarizer import LabelBinarizer
-from supervised.preprocessing.label_encoder import LabelEncoder
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
-from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
-from supervised.preprocessing.scale import Scale
-from supervised.preprocessing.text_transformer import TextTransformer
+from supervised.preprocessing.transformer.kmeans_transformer import KMeansTransformer
+from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
+from supervised.preprocessing.transformer.label_encoder import LabelEncoder
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
+from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
+from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
+from supervised.preprocessing.transformer.text_transformer import TextTransformer
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
@@ -82,17 +82,17 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing params: {}".format(target_preprocessing))
 
-            X_train, y_train, sample_weight, _ = ExcludeRowsMissingTarget.transform(
+            X_train, y_train, sample_weight, _ = ExcludeRowsMissingTargetTransformer.transform(
                 X_train, y_train, sample_weight
             )
 
-            if PreprocessingCategorical.CONVERT_INTEGER in target_preprocessing:
+            if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
                 logger.debug("Convert target to integer")
                 self._categorical_y = LabelEncoder(try_to_fit_numeric=True)
                 self._categorical_y.fit(y_train)
                 y_train = pd.Series(self._categorical_y.transform(y_train))
 
-            if PreprocessingCategorical.CONVERT_ONE_HOT in target_preprocessing:
+            if CategoricalTransformer.CONVERT_ONE_HOT in target_preprocessing:
                 logger.debug("Convert target to one-hot coding")
                 self._categorical_y = LabelBinarizer()
                 self._categorical_y.fit(pd.DataFrame({"target": y_train}), "target")
@@ -100,21 +100,21 @@ class Preprocessing(object):
                     pd.DataFrame({"target": y_train}), "target"
                 )
 
-            if Scale.SCALE_LOG_AND_NORMAL in target_preprocessing:
+            if ScaleTransformer.SCALE_LOG_AND_NORMAL in target_preprocessing:
                 logger.debug("Scale log and normal")
 
-                self._scale_y = Scale(
-                    ["target"], scale_method=Scale.SCALE_LOG_AND_NORMAL
+                self._scale_y = ScaleTransformer(
+                    ["target"], scale_method=ScaleTransformer.SCALE_LOG_AND_NORMAL
                 )
                 y_train = pd.DataFrame({"target": y_train})
                 self._scale_y.fit(y_train)
                 y_train = self._scale_y.transform(y_train)
                 y_train = y_train["target"]
 
-            if Scale.SCALE_NORMAL in target_preprocessing:
+            if ScaleTransformer.SCALE_NORMAL in target_preprocessing:
                 logger.debug("Scale normal")
 
-                self._scale_y = Scale(["target"], scale_method=Scale.SCALE_NORMAL)
+                self._scale_y = ScaleTransformer(["target"], scale_method=ScaleTransformer.SCALE_NORMAL)
                 y_train = pd.DataFrame({"target": y_train})
                 self._scale_y.fit(y_train)
                 y_train = self._scale_y.transform(y_train)
@@ -164,14 +164,14 @@ class Preprocessing(object):
             new_text_columns += t._new_columns
         # end of text transform
 
-        for missing_method in [PreprocessingMissingValues.FILL_NA_MEDIAN]:
+        for missing_method in [MissingValuesTransformer.FILL_NA_MEDIAN]:
             cols_to_process = list(
                 filter(
                     lambda k: missing_method in columns_preprocessing[k],
                     columns_preprocessing,
                 )
             )
-            missing = PreprocessingMissingValues(cols_to_process, missing_method)
+            missing = MissingValuesTransformer(cols_to_process, missing_method)
             missing.fit(X_train)
             X_train = missing.transform(X_train)
             self._missing_values += [missing]
@@ -201,9 +201,9 @@ class Preprocessing(object):
             kmeans_columns = self._kmeans._new_features
 
         for convert_method in [
-            PreprocessingCategorical.CONVERT_INTEGER,
-            PreprocessingCategorical.CONVERT_ONE_HOT,
-            PreprocessingCategorical.CONVERT_LOO,
+            CategoricalTransformer.CONVERT_INTEGER,
+            CategoricalTransformer.CONVERT_ONE_HOT,
+            CategoricalTransformer.CONVERT_LOO,
         ]:
             cols_to_process = list(
                 filter(
@@ -211,7 +211,7 @@ class Preprocessing(object):
                     columns_preprocessing,
                 )
             )
-            convert = PreprocessingCategorical(cols_to_process, convert_method)
+            convert = CategoricalTransformer(cols_to_process, convert_method)
             convert.fit(X_train, y_train)
             X_train = convert.transform(X_train)
             self._categorical += [convert]
@@ -233,7 +233,7 @@ class Preprocessing(object):
             new_datetime_columns += t._new_columns
 
         # SCALE
-        for scale_method in [Scale.SCALE_NORMAL, Scale.SCALE_LOG_AND_NORMAL]:
+        for scale_method in [ScaleTransformer.SCALE_NORMAL, ScaleTransformer.SCALE_LOG_AND_NORMAL]:
             cols_to_process = list(
                 filter(
                     lambda k: scale_method in columns_preprocessing[k],
@@ -243,32 +243,32 @@ class Preprocessing(object):
             if (
                 len(cols_to_process)
                 and len(new_datetime_columns)
-                and scale_method == Scale.SCALE_NORMAL
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_datetime_columns
             if (
                 len(cols_to_process)
                 and len(new_text_columns)
-                and scale_method == Scale.SCALE_NORMAL
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_text_columns
 
             if (
                 len(cols_to_process)
                 and len(golden_columns)
-                and scale_method == Scale.SCALE_NORMAL
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += golden_columns
 
             if (
                 len(cols_to_process)
                 and len(kmeans_columns)
-                and scale_method == Scale.SCALE_NORMAL
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += kmeans_columns
 
             if len(cols_to_process):
-                scale = Scale(cols_to_process)
+                scale = ScaleTransformer(cols_to_process)
                 scale.fit(X_train)
                 X_train = scale.transform(X_train)
                 self._scale += [scale]
@@ -318,30 +318,30 @@ class Preprocessing(object):
                 y_validation,
                 sample_weight_validation,
                 _,
-            ) = ExcludeRowsMissingTarget.transform(
+            ) = ExcludeRowsMissingTargetTransformer.transform(
                 X_validation, y_validation, sample_weight_validation
             )
 
-            if PreprocessingCategorical.CONVERT_INTEGER in target_preprocessing:
+            if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
                 if y_validation is not None and self._categorical_y is not None:
                     y_validation = pd.Series(
                         self._categorical_y.transform(y_validation)
                     )
 
-            if PreprocessingCategorical.CONVERT_ONE_HOT in target_preprocessing:
+            if CategoricalTransformer.CONVERT_ONE_HOT in target_preprocessing:
                 if y_validation is not None and self._categorical_y is not None:
                     y_validation = self._categorical_y.transform(
                         pd.DataFrame({"target": y_validation}), "target"
                     )
 
-            if Scale.SCALE_LOG_AND_NORMAL in target_preprocessing:
+            if ScaleTransformer.SCALE_LOG_AND_NORMAL in target_preprocessing:
                 if self._scale_y is not None and y_validation is not None:
                     logger.debug("Transform log and normalize")
                     y_validation = pd.DataFrame({"target": y_validation})
                     y_validation = self._scale_y.transform(y_validation)
                     y_validation = y_validation["target"]
 
-            if Scale.SCALE_NORMAL in target_preprocessing:
+            if ScaleTransformer.SCALE_NORMAL in target_preprocessing:
                 if self._scale_y is not None and y_validation is not None:
                     logger.debug("Transform normalize")
                     y_validation = pd.DataFrame({"target": y_validation})
@@ -381,8 +381,8 @@ class Preprocessing(object):
             #        )
             #    )
             # )
-            missing = PreprocessingMissingValues(
-                X_validation.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+            missing = MissingValuesTransformer(
+                X_validation.columns, MissingValuesTransformer.FILL_NA_MEDIAN
             )
             missing.fit(X_validation)
             X_validation = missing.transform(X_validation)
@@ -598,13 +598,13 @@ class Preprocessing(object):
         if "missing_values" in data_json:
             self._missing_values = []
             for mv_data in data_json["missing_values"]:
-                mv = PreprocessingMissingValues()
+                mv = MissingValuesTransformer()
                 mv.from_json(mv_data)
                 self._missing_values += [mv]
         if "categorical" in data_json:
             self._categorical = []
             for cat_data in data_json["categorical"]:
-                cat = PreprocessingCategorical()
+                cat = CategoricalTransformer()
                 cat.from_json(cat_data)
                 self._categorical += [cat]
 
@@ -633,7 +633,7 @@ class Preprocessing(object):
         if "scale" in data_json:
             self._scale = []
             for scale_data in data_json["scale"]:
-                sc = Scale()
+                sc = ScaleTransformer()
                 sc.from_json(scale_data)
                 self._scale += [sc]
         if "categorical_y" in data_json:
@@ -644,7 +644,7 @@ class Preprocessing(object):
 
             self._categorical_y.from_json(data_json["categorical_y"])
         if "scale_y" in data_json:
-            self._scale_y = Scale()
+            self._scale_y = ScaleTransformer()
             self._scale_y.from_json(data_json["scale_y"])
         if "ml_task" in data_json:
             self._params["ml_task"] = data_json["ml_task"]

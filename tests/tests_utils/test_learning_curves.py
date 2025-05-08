@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from supervised.utils.learning_curves import LearningCurves
+from supervised.report.learning_curves import LearningCurves
 
 
 class LearningCurvesTest(unittest.TestCase):

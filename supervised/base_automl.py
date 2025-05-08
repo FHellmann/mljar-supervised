@@ -27,14 +27,14 @@ from supervised.callbacks.total_time_constraint import TotalTimeConstraint
 from supervised.ensemble import Ensemble
 from supervised.exceptions import AutoMLException, NotTrainedException
 from supervised.model_framework import ModelFramework
-from supervised.preprocessing.exclude_missing_target import ExcludeRowsMissingTarget
+from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
 # disable EDA
 # from supervised.preprocessing.eda import EDA
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
 from supervised.tuner.data_info import DataInfo
 from supervised.tuner.mljar_tuner import MljarTuner
 from supervised.tuner.time_controller import TimeController
-from supervised.utils.automl_plots import AutoMLPlots
+from supervised.report.automl_plots import AutoMLPlots
 from supervised.utils.config import LOG_LEVEL
 from supervised.utils.data_validation import (
     check_bool,
@@ -44,7 +44,7 @@ from supervised.utils.data_validation import (
     check_positive_integer,
 )
 from supervised.utils.jsonencoder import MLJSONEncoder
-from supervised.utils.leaderboard_plots import LeaderboardPlots
+from supervised.report.leaderboard_plots import LeaderboardPlots
 from supervised.utils.metric import Metric, UserDefinedEvalMetric
 from supervised.utils.utils import dump_data, load_data
 
@@ -791,7 +791,7 @@ class BaseAutoML(BaseEstimator, ABC):
             elif isinstance(sensitive_features, pd.Series):
                 sensitive_features = pd.DataFrame(sensitive_features)
 
-        X, y, sample_weight, sensitive_features = ExcludeRowsMissingTarget.transform(
+        X, y, sample_weight, sensitive_features = ExcludeRowsMissingTargetTransformer.transform(
             X, y, sample_weight, sensitive_features, warn=True
         )
 
@@ -2478,7 +2478,7 @@ margin-right: auto;display: block;"/>\n\n"""
     def _need_retrain(self, X, y, sample_weight, decrease):
         metric = self._best_model.get_metric()
 
-        X, y, sample_weight, _ = ExcludeRowsMissingTarget.transform(
+        X, y, sample_weight, _ = ExcludeRowsMissingTargetTransformer.transform(
             X, y, sample_weight, warn=True
         )
 

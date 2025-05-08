@@ -46,14 +46,14 @@ class LabelEncoder(BaseTransformer, AttributeSerializer):
     def inverse_transform(self, X: DataFrame, **kwargs) -> DataFrame:
         return self.lbl.inverse_transform(X)
 
-    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
+    def to_dict(self, exclude_callables_nones: bool = False, exclude_attributes: List[str] = None,
                 **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
         return super().to_dict(exclude_callables_nones, exclude_attributes,
                                lbl=lambda x: {str(cl): idx for idx, cl in enumerate(x.classes_)}, **attribute_encoders)
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(data_json, **attribute_decoders)
-        keys = np.array(list(data_json.keys()))
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        super().from_dict(params, **attribute_decoders)
+        keys = np.array(list(params.keys()))
         if len(keys) == 2 and "False" in keys and "True" in keys:
             keys = np.array([False, True])
         self.lbl.classes_ = keys

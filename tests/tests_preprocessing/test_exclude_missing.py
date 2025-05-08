@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from supervised.preprocessing.exclude_missing_target import ExcludeRowsMissingTarget
+from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
 
 
 class ExcludeRowsMissingTargetTest(unittest.TestCase):
@@ -21,7 +21,7 @@ class ExcludeRowsMissingTargetTest(unittest.TestCase):
 
         self.assertEqual(X.shape[0], 4)
         self.assertEqual(y.shape[0], 4)
-        X, y, _, _ = ExcludeRowsMissingTarget.transform(X, y)
+        X, y, _, _ = ExcludeRowsMissingTargetTransformer.transform(X, y)
         self.assertEqual(X.shape[0], 2)
         self.assertEqual(y.shape[0], 2)
 
@@ -44,7 +44,7 @@ class ExcludeRowsMissingTargetTest(unittest.TestCase):
 
         self.assertEqual(X.shape[0], 4)
         self.assertEqual(y.shape[0], 4)
-        X, y, sw, _ = ExcludeRowsMissingTarget.transform(X, y, sample_weight)
+        X, y, sw, _ = ExcludeRowsMissingTargetTransformer.transform(X, y, sample_weight)
         self.assertEqual(X.shape[0], 2)
         self.assertEqual(y.shape[0], 2)
         self.assertEqual(sw.shape[0], 2)

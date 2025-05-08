@@ -53,14 +53,14 @@ class LooEncoder(BaseTransformer, AttributeSerializer):
         return super().to_dict(exclude_callables_nones=exclude_callables_nones, exclude_attributes=exclude_attributes,
                         enc=enc_encoder, **attribute_encoders)
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
         def enc_decoder(loo_enc):
-            loo_enc.cols = data_json.get("cols")
-            loo_enc._dim = data_json.get("dim")
-            loo_enc._mean = data_json.get("mean")
-            loo_enc.feature_names = data_json.get("feature_names")
+            loo_enc.cols = params.get("cols")
+            loo_enc._dim = params.get("dim")
+            loo_enc._mean = params.get("mean")
+            loo_enc.feature_names = params.get("feature_names")
             loo_enc.mapping = {}
-            for k, v in data_json.get("mapping", {}).items():
+            for k, v in params.get("mapping", {}).items():
                 loo_enc.mapping[k] = pd.DataFrame(json.loads(v))
 
-        super().from_dict(data_json, enc=enc_decoder, **attribute_decoders)
+        super().from_dict(params, enc=enc_decoder, **attribute_decoders)

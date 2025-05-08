@@ -1,18 +1,16 @@
-from typing import Dict, Any, List, Callable
+from typing import Dict, Any, List, Callable, Type
 
 
 class AttributeSerializer(object):
     """
     Mixin class providing serialization and deserialization of object attributes.
-
-    Methods:
-        to_dict: Serializes the object's attributes to a dictionary, with options to exclude callables, None values, or specific attributes.
-        from_dict: Deserializes a dictionary into the object's attributes, matching variable names with a pre-underscore.
-        _has_callable_attr: Checks if the object has any callable attributes.
     """
 
+    def __repr__(self):
+        return self.to_dict()
+
     def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any]:
+                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
         """
         Serialize the object's attributes to a dictionary.
 
@@ -27,10 +25,7 @@ class AttributeSerializer(object):
         params = self.__dict__.copy()
         # Exclude values
         if exclude_callables_nones:
-            exclude = []
-            for key, value in params.items():
-                if not callable(value) or value is None or exclude_attributes is not None and key in exclude_attributes:
-                    exclude.append(key)
+            exclude = list(self.get_callable_attrs().keys()) + list(self.get_none_attrs().keys())
             for key in exclude:
                 params.pop(key, None)
         # Encode custom values
@@ -41,7 +36,7 @@ class AttributeSerializer(object):
         # Remove underscore for all attributes
         return {key[1:]: value for key, value in params.items()}
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
         """
         Load object attributes from a dictionary, matching variable names with a pre-underscore.
 
@@ -49,31 +44,73 @@ class AttributeSerializer(object):
         Custom decoders can be applied to specific attributes.
 
         Args:
-            data_json (Dict[str, Any]): Dictionary containing attribute values to load.
+            params (Dict[str, Any]): Dictionary containing attribute values to load.
             **attribute_decoders: Callable[[Any], Any] instances for custom attribute decoding.
 
         Returns:
-            None
+            Self
         """
-        for key, value in data_json.items():
+        for key, value in params.items():
             attr_name = f"_{key}"  # Add pre-underscore to match class variable
             if hasattr(self, attr_name):
                 current_value = getattr(self, attr_name)
                 # Decode custom values
-                for enc_key, enc_value in attribute_decoders.items():
-                    if enc_value == attr_name:
-                        value = enc_value(value)
+                for dec_key, dec_value in attribute_decoders.items():
+                    if dec_key == attr_name:
+                        value = dec_value(value)
                 if isinstance(current_value, list):
                     setattr(self, attr_name, value if value is not None else [])
+                if isinstance(current_value, dict):
+                    setattr(self, attr_name, value if value is not None else {})
                 else:
                     setattr(self, attr_name, value)
 
-    def _has_callable_attr(self):
+    def get_callable_attrs(self) -> Dict[str, Callable]:
         """
-        Check if the object has any callable attributes.
+        Get all callable attributes.
 
         Returns:
-            bool: True if any attribute is callable, False otherwise.
+            List: List of callable attributes.
         """
         params = self.__dict__.copy()
-        return any([callable(value) for value in params.values()])
+        return {key: value for key, value in params.items() if callable(value)}
+
+    def get_none_attrs(self) -> Dict[str, None]:
+        """
+        Get all None attributes.
+
+        Returns:
+            List: List of None attributes.
+        """
+        params = self.__dict__.copy()
+        return {key: value for key, value in params.items() if value is None}
+
+    @staticmethod
+    def create_from_dict(cls: Type, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> object:
+        """
+        Factory method to create and initialize an object from serialized parameters.
+
+        Args:
+            cls (Type): Class type to instantiate (must subclass AttributeSerializer)
+            params (Dict[str, Any]): Dictionary of serialized parameters
+            **attribute_decoders: Custom decoders for specific attributes
+
+        Returns:
+            object: Initialized instance of the specified class
+
+        Example:
+            >>> obj = AttributeSerializer.create_from_dict(
+            >>>     MyCustomSerializer,
+            >>>     {"param1": 42},
+            >>>     _param1=lambda v: v * 2
+            >>> )
+        """
+        object_params = {}
+        for key, value in params.items():
+            attr_name = f"_{key}"  # Add pre-underscore to match class variable
+            # Decode custom values
+            for dec_key, dec_value in attribute_decoders.items():
+                if dec_key == attr_name:
+                    value = dec_value(value)
+            object_params[key] = value
+        return cls(**object_params)

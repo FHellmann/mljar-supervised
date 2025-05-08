@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from supervised.preprocessing.label_encoder import LabelEncoder
+from supervised.preprocessing.transformer.label_encoder import LabelEncoder
 
 
 class LabelEncoderTest(unittest.TestCase):

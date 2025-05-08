@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 from numpy.testing import assert_almost_equal
 
-from supervised.preprocessing.text_transformer import TextTransformer
+from supervised.preprocessing.transformer.text_transformer import TextTransformer
 
 
 class TextTransformerTest(unittest.TestCase):

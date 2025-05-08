@@ -17,6 +17,7 @@ from supervised.algorithms.registry import (
 )
 from supervised.exceptions import AutoMLException
 from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.utils.attribute_storage import AttributeStorage
 
 
 def get_binary_score(X_train, y_train, X_test, y_test):
@@ -105,7 +106,7 @@ def get_score(item):
     return (diff_score, ratio_1_score, ratio_2_score, sum_score, multiply_score)
 
 
-class GoldenFeaturesTransformer(BaseTransformer):
+class GoldenFeaturesTransformer(BaseTransformer, AttributeStorage):
     def __init__(self, results_path=None, ml_task=None, features_count=None, n_jobs=-1):
         super(GoldenFeaturesTransformer, self).__init__("golden_features", results_path)
         self._new_features = []

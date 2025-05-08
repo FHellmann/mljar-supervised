@@ -8,7 +8,7 @@ from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.utils.attribute_serializer import AttributeSerializer
 
 
-class Scale(BaseTransformer, AttributeSerializer):
+class ScaleTransformer(BaseTransformer, AttributeSerializer):
     SCALE_NORMAL = "scale_normal"
     SCALE_LOG_AND_NORMAL = "scale_log_and_normal"
 
@@ -75,7 +75,7 @@ class Scale(BaseTransformer, AttributeSerializer):
         return super().to_dict(exclude_callables_nones, exclude_attributes,
                         scale=scale_encoder, X_min_values=lambda x: list(x), **attribute_encoders)
 
-    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
         self.scale = preprocessing.StandardScaler(
             copy=True, with_mean=True, with_std=True
         )
@@ -94,4 +94,4 @@ class Scale(BaseTransformer, AttributeSerializer):
             self.scale.n_features_in_ = int(data.get("n_features_in"))
             self.scale.feature_names_in_ = data.get("columns", [])
 
-        super().from_dict(data_json, scale=scale_decoder, **attribute_decoders)
+        super().from_dict(params, scale=scale_decoder, **attribute_decoders)

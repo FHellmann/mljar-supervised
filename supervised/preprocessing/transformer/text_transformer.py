@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sqlalchemy import column
 
 from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.utils.attribute_serializer import AttributeSerializer
@@ -52,34 +51,26 @@ class TextTransformer(BaseTransformer, AttributeSerializer):
 
     def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
                 **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        super().to_dict(exclude_callables_nones, exclude_attributes, **attribute_encoders)
+        def vectorizer_encoder(vectorizer):
+            return {
+                "vocabulary": self._vectorizer.vocabulary_,
+                "fixed_vocabulary": {key: int(value) for key, value in vectorizer.vocabulary_.items()},
+                "idf": list(self._vectorizer.idf_),
+            }
 
-    def to_json(self):
-        for k in self._vectorizer.vocabulary_.keys():
-            self._vectorizer.vocabulary_[k] = int(self._vectorizer.vocabulary_[k])
+        return super().to_dict(exclude_callables_nones, exclude_attributes,
+                               _vectorizer=vectorizer_encoder, **attribute_encoders)
 
-        data_json = {
-            "new_columns": list(self._new_columns),
-            "old_column": self._old_column,
-            "vocabulary": self._vectorizer.vocabulary_,
-            "fixed_vocabulary": self._vectorizer.fixed_vocabulary_,
-            "idf": list(self._vectorizer.idf_),
-        }
-        return data_json
-
-    def from_json(self, data_json):
-        self._new_columns = data_json.get("new_columns", None)
-        self._old_column = data_json.get("old_column", None)
-        vocabulary = data_json.get("vocabulary")
-        fixed_vocabulary = data_json.get("fixed_vocabulary")
-        idf = data_json.get("idf")
-        if vocabulary is not None and fixed_vocabulary is not None and idf is not None:
-            self._vectorizer = TfidfVectorizer(
+    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        def vectorizer_decoder(data):
+            vectorizer = TfidfVectorizer(
                 analyzer="word",
                 stop_words="english",
                 lowercase=True,
                 max_features=self._max_features,
             )
-            self._vectorizer.vocabulary_ = vocabulary
-            self._vectorizer.fixed_vocabulary_ = fixed_vocabulary
-            self._vectorizer.idf_ = np.array(idf)
+            vectorizer.vocabulary_ = data.get("vocabulary")
+            vectorizer.fixed_vocabulary_ = data.get("fixed_vocabulary")
+            vectorizer.idf_ = np.array(data.get("idf"))
+
+        super().from_dict(params, **attribute_decoders)

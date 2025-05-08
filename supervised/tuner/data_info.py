@@ -6,8 +6,8 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
 )
-from supervised.preprocessing.encoding_selector import EncodingSelector
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 
 
 class DataInfo:
@@ -32,7 +32,7 @@ class DataInfo:
             #
             if PreprocessingUtils.is_categorical(X[col]):
                 columns_info[col] += ["categorical"]
-                columns_info[col] += [EncodingSelector.get(X, y, col)]
+                columns_info[col] += [CategoricalTransformer.get_categorical_encoding(X, y, col)]
             elif PreprocessingUtils.is_datetime(X[col]):
                 columns_info[col] += ["datetime_transform"]
             elif PreprocessingUtils.is_text(X[col]):

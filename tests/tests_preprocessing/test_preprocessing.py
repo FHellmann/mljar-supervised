@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 
 from supervised.preprocessing.preprocessing import Preprocessing
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
-from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
+from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
 
 
 class PreprocessingTest(unittest.TestCase):
@@ -89,20 +89,20 @@ class PreprocessingTest(unittest.TestCase):
         preprocessing_params = {
             "columns_preprocessing": {
                 "col1": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col2": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col3": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col4": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
             }
         }
@@ -134,20 +134,20 @@ class PreprocessingTest(unittest.TestCase):
         preprocessing_params = {
             "columns_preprocessing": {
                 "col1": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col2": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col3": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col4": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
             }
         }
@@ -206,20 +206,20 @@ class PreprocessingTest(unittest.TestCase):
         preprocessing_params = {
             "columns_preprocessing": {
                 "col1": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col2": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col3": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col4": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
             }
         }
@@ -245,8 +245,8 @@ class PreprocessingTest(unittest.TestCase):
 
         preprocessing_params = {
             "target_preprocessing": [
-                PreprocessingMissingValues.FILL_NA_MEDIAN,
-                PreprocessingCategorical.CONVERT_INTEGER,
+                MissingValuesTransformer.FILL_NA_MEDIAN,
+                CategoricalTransformer.CONVERT_INTEGER,
             ]
         }
 
@@ -268,8 +268,8 @@ class PreprocessingTest(unittest.TestCase):
 
         preprocessing_params = {
             "target_preprocessing": [
-                PreprocessingMissingValues.FILL_NA_MEDIAN,
-                PreprocessingCategorical.CONVERT_INTEGER,
+                MissingValuesTransformer.FILL_NA_MEDIAN,
+                CategoricalTransformer.CONVERT_INTEGER,
             ]
         }
 
@@ -300,14 +300,14 @@ class PreprocessingTest(unittest.TestCase):
 
         preprocessing_params = {
             "columns_preprocessing": {
-                "col1": [PreprocessingMissingValues.FILL_NA_MEDIAN],
+                "col1": [MissingValuesTransformer.FILL_NA_MEDIAN],
                 "col2": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
                 "col4": [
-                    PreprocessingMissingValues.FILL_NA_MEDIAN,
-                    PreprocessingCategorical.CONVERT_INTEGER,
+                    MissingValuesTransformer.FILL_NA_MEDIAN,
+                    CategoricalTransformer.CONVERT_INTEGER,
                 ],
             },
             "target_preprocessing": [],

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
+from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
 
 
 class PreprocessingMissingValuesTest(unittest.TestCase):
@@ -11,12 +11,12 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         """
         Check if PreprocessingMissingValues object is properly initialized
         """
-        preprocess_missing = PreprocessingMissingValues(
-            PreprocessingMissingValues.FILL_NA_MEDIAN
+        preprocess_missing = MissingValuesTransformer(
+            MissingValuesTransformer.FILL_NA_MEDIAN
         )
         self.assertEqual(
             preprocess_missing._na_fill_method,
-            PreprocessingMissingValues.FILL_NA_MEDIAN,
+            MissingValuesTransformer.FILL_NA_MEDIAN,
         )
         self.assertEqual(preprocess_missing._na_fill_params, {})
 
@@ -28,20 +28,20 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         d = {"col1": [1, 2, 3, np.nan, np.nan], "col2": ["a", "a", np.nan, "b", "c"]}
         df = pd.DataFrame(data=d)
         # fill with median
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MEDIAN
         )
         self.assertEqual(preprocess_missing._get_fill_value(df["col1"]), 2)
         self.assertEqual(preprocess_missing._get_fill_value(df["col2"]), "a")
         # fill with mean
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MEDIAN
         )
         self.assertEqual(preprocess_missing._get_fill_value(df["col1"]), 2)
         self.assertEqual(preprocess_missing._get_fill_value(df["col2"]), "a")
         # fill with min
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MIN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MIN
         )
         self.assertEqual(preprocess_missing._get_fill_value(df["col1"]), 0)
         self.assertEqual(
@@ -59,8 +59,8 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         }
         df = pd.DataFrame(data=d)
         # fill with median
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MEDIAN
         )
         preprocess_missing._fit_na_fill(df)
         self.assertTrue("col1" in preprocess_missing._na_fill_params)
@@ -69,8 +69,8 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         self.assertEqual(2, preprocess_missing._na_fill_params["col1"])
         self.assertEqual("a", preprocess_missing._na_fill_params["col2"])
         # fill with mean
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MEAN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MEAN
         )
         preprocess_missing._fit_na_fill(df)
         self.assertTrue("col1" in preprocess_missing._na_fill_params)
@@ -79,8 +79,8 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         self.assertEqual(2, preprocess_missing._na_fill_params["col1"])
         self.assertEqual("a", preprocess_missing._na_fill_params["col2"])
         # fill with min
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MIN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MIN
         )
         preprocess_missing._fit_na_fill(df)
         self.assertTrue("col1" in preprocess_missing._na_fill_params)
@@ -110,8 +110,8 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         }
         df_test = pd.DataFrame(data=d_test)
         # fill with median
-        preprocess_missing = PreprocessingMissingValues(
-            df.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+        preprocess_missing = MissingValuesTransformer(
+            df.columns, MissingValuesTransformer.FILL_NA_MEDIAN
         )
         preprocess_missing.fit(df)
         self.assertEqual(
@@ -156,8 +156,8 @@ class PreprocessingMissingValuesTest(unittest.TestCase):
         X_test = df_test.loc[:, ["col1", "col2", "col3", "col4"]]
         y_test = df_test.loc[:, "y"]
 
-        pm = PreprocessingMissingValues(
-            X_train.columns, PreprocessingMissingValues.FILL_NA_MEDIAN
+        pm = MissingValuesTransformer(
+            X_train.columns, MissingValuesTransformer.FILL_NA_MEDIAN
         )
         pm.fit(X_train)
         X_train = pm.transform(X_train)

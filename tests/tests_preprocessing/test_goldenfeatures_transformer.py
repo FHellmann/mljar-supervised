@@ -11,7 +11,7 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
 )
-from supervised.preprocessing.goldenfeatures_transformer import (
+from supervised.preprocessing.transformer.goldenfeatures_transformer import (
     GoldenFeaturesTransformer,
 )
 

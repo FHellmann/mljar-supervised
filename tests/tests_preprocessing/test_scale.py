@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from numpy.testing import assert_almost_equal
 
-from supervised.preprocessing.scale import Scale
+from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
 
 
 class ScaleTest(unittest.TestCase):
@@ -17,7 +17,7 @@ class ScaleTest(unittest.TestCase):
         }
         df = pd.DataFrame(data=d)
 
-        scale = Scale(["col1", "col3"], scale_method=Scale.SCALE_LOG_AND_NORMAL)
+        scale = ScaleTransformer(["col1", "col3"], scale_method=ScaleTransformer.SCALE_LOG_AND_NORMAL)
         scale.fit(df)
         df = scale.transform(df)
         val = float(df["col1"][0])
@@ -29,7 +29,7 @@ class ScaleTest(unittest.TestCase):
 
         df = scale.inverse_transform(df)
 
-        scale2 = Scale()
+        scale2 = ScaleTransformer()
         scale_params = scale.to_json()
 
         scale2.from_json(scale_params)
@@ -44,7 +44,7 @@ class ScaleTest(unittest.TestCase):
         }
         df = pd.DataFrame(data=d)
 
-        scale = Scale(["col1"])
+        scale = ScaleTransformer(["col1"])
         scale.fit(df)
         df = scale.transform(df)
 
@@ -63,7 +63,7 @@ class ScaleTest(unittest.TestCase):
         }
         df = pd.DataFrame(data=d)
 
-        scale = Scale(["col1"])
+        scale = ScaleTransformer(["col1"])
         scale.fit(df)
         # do not transform
         assert_almost_equal(np.mean(df["col1"]), 5.5)
@@ -71,7 +71,7 @@ class ScaleTest(unittest.TestCase):
         # to and from json
 
         json_data = scale.to_json()
-        scale2 = Scale()
+        scale2 = ScaleTransformer()
         scale2.from_json(json_data)
         # transform with loaded scaler
         df = scale2.transform(df)

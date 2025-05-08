@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn import datasets
 
 from supervised import AutoML
-from supervised.preprocessing.eda import EDA
+from supervised.report.eda import EDA
 
 
 class EDATest(unittest.TestCase):

@@ -1,11 +1,3 @@
-import unittest
-
-import numpy as np
-import pandas as pd
-from numpy.testing import assert_almost_equal
-
-from supervised.preprocessing.loo_encoder import LooEncoder
-
 # disable tests
 # class LabelEncoderTest(unittest.TestCase):
 #     def test_fit(self):

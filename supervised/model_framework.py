@@ -31,7 +31,7 @@ logger.setLevel(LOG_LEVEL)
 import joblib
 
 from supervised.tuner.optuna.tuner import OptunaTuner
-from supervised.utils.learning_curves import LearningCurves
+from supervised.report.learning_curves import LearningCurves
 
 
 class ModelFramework:
