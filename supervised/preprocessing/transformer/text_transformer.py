@@ -1,17 +1,25 @@
 import warnings
+from typing import List, Callable, Any, Dict
+
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sqlalchemy import column
+
+from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.utils.attribute_serializer import AttributeSerializer
 
 
-class TextTransformer(object):
+class TextTransformer(BaseTransformer, AttributeSerializer):
     def __init__(self):
         self._new_columns = []
         self._old_column = None
         self._max_features = 100
         self._vectorizer = None
 
-    def fit(self, X, column):
+    def fit(self, X: DataFrame, y: DataFrame = None, **kwargs):
+        column = kwargs["column"]
         self._old_column = column
         self._vectorizer = TfidfVectorizer(
             analyzer="word",
@@ -26,7 +34,7 @@ class TextTransformer(object):
             new_col = self._old_column + "_" + f
             self._new_columns += [new_col]
 
-    def transform(self, X):
+    def transform(self, X: DataFrame, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter(
                 action="ignore", category=pd.errors.PerformanceWarning
@@ -41,6 +49,10 @@ class TextTransformer(object):
             X.loc[ii, self._new_columns] = vect.toarray()
             X.drop(self._old_column, axis=1, inplace=True)
         return X
+
+    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
+                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
+        super().to_dict(exclude_callables_nones, exclude_attributes, **attribute_encoders)
 
     def to_json(self):
         for k in self._vectorizer.vocabulary_.keys():

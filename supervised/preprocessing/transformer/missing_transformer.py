@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 
+from supervised.utils.attribute_serializer import AttributeSerializer
+from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
 
 
-class PreprocessingMissingValues(object):
+class PreprocessingMissingValues(BaseTransformer, AttributeSerializer):
     FILL_NA_MIN = "na_fill_min_1"
     FILL_NA_MEAN = "na_fill_mean"
     FILL_NA_MEDIAN = "na_fill_median"
@@ -23,9 +25,7 @@ class PreprocessingMissingValues(object):
         self._datetime_columns = []
 
     def fit(self, X):
-        X = self._fit_na_fill(X)
-
-    def _fit_na_fill(self, X):
+        # _fit_na_fill
         for column in self._columns:
             if np.sum(pd.isnull(X[column]) == True) == 0:
                 continue

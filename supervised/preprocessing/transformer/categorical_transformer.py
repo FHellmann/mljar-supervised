@@ -1,13 +1,17 @@
-import numpy as np
-import pandas as pd
+from typing import List, Callable, Any, Dict
 
-from supervised.preprocessing.label_binarizer import LabelBinarizer
-from supervised.preprocessing.label_encoder import LabelEncoder
-from supervised.preprocessing.loo_encoder import LooEncoder
+import pandas as pd
+from pandas import DataFrame
+
+from supervised.utils.attribute_serializer import AttributeSerializer
+from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
+from supervised.preprocessing.transformer.label_encoder import LabelEncoder
+from supervised.preprocessing.transformer.loo_encoder import LooEncoder
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
 
 
-class PreprocessingCategorical(object):
+class PreprocessingCategorical(BaseTransformer, AttributeSerializer):
     CONVERT_ONE_HOT = "categorical_to_onehot"
     CONVERT_INTEGER = "categorical_to_int"
     CONVERT_LOO = "categorical_to_loo"
@@ -21,7 +25,7 @@ class PreprocessingCategorical(object):
         self._columns = columns
         self._enc = None
 
-    def fit(self, X, y=None):
+    def fit(self, X: DataFrame, y: DataFrame = None, **kwargs):
         if (
             self._convert_method == PreprocessingCategorical.CONVERT_LOO
             and self._columns
@@ -32,6 +36,9 @@ class PreprocessingCategorical(object):
             self._fit_categorical_convert(X)
 
     def _fit_categorical_convert(self, X):
+        # Precompute unique counts for all columns to avoid repeated calculations
+        unique_counts = {col: X[col].nunique(dropna=False) for col in self._columns}
+
         for column in self._columns:
             if PreprocessingUtils.get_type(X[column]) != PreprocessingUtils.CATEGORICAL:
                 # no need to convert, already a number
@@ -40,22 +47,19 @@ class PreprocessingCategorical(object):
             # this code is also used in predict.py file
             # and transform_utils.py
             # TODO it needs refactoring !!!
-            too_much_categories = len(np.unique(list(X[column].values))) > 200
-            lbl = None
+            too_many_categories = unique_counts[column] > 200
             if (
                 self._convert_method == PreprocessingCategorical.CONVERT_ONE_HOT
-                and not too_much_categories
+                and not too_many_categories
             ):
                 lbl = LabelBinarizer()
-                lbl.fit(X, column)
             else:
                 lbl = LabelEncoder()
-                lbl.fit(X[column])
 
-            if lbl is not None:
-                self._convert_params[column] = lbl.to_json()
+            lbl.fit(X=X[column])
+            self._convert_params[column] = lbl.to_dict()
 
-    def transform(self, X):
+    def transform(self, X: DataFrame, **kwargs):
         if (
             self._convert_method == PreprocessingCategorical.CONVERT_LOO
             and self._columns
@@ -85,7 +89,7 @@ class PreprocessingCategorical(object):
 
             return X
 
-    def inverse_transform(self, X):
+    def inverse_transform(self, X: DataFrame, **kwargs):
         for column, lbl_params in self._convert_params.items():
             if "unique_values" in lbl_params and "new_columns" in lbl_params:
                 # convert to one hot
@@ -107,6 +111,12 @@ class PreprocessingCategorical(object):
 
         return X
 
+    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
+                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
+        super().to_dict(exclude_callables_nones=exclude_callables_nones, exclude_attributes=exclude_attributes,
+                        _enc=lambda x: x.to_dict()
+                        **attribute_encoders)
+
     def to_json(self):
         params = {}
         if (
@@ -118,9 +128,7 @@ class PreprocessingCategorical(object):
                 "convert_method": self._convert_method,
                 "columns": self._columns,
             }
-        else:
-            if len(self._convert_params) == 0:
-                return {}
+        elif len(self._convert_params) > 0:
             params = {
                 "convert_method": self._convert_method,
                 "convert_params": self._convert_params,

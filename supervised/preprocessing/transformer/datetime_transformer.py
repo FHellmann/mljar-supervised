@@ -1,15 +1,23 @@
+from typing import Dict, Any, Callable
+
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
+
+from supervised.utils.attribute_serializer import AttributeSerializer
+from supervised.preprocessing.base_transformer import BaseTransformer
 
 
-class DateTimeTransformer(object):
+class DateTimeTransformer(BaseTransformer, AttributeSerializer):
     def __init__(self):
+        super(DateTimeTransformer, self).__init__("datetime")
         self._new_columns = []
         self._old_column = None
         self._min_datetime = None
         self._transforms = []
 
-    def fit(self, X, column):
+    def fit(self, X: DataFrame, y: DataFrame = None, **kwargs):
+        column = kwargs["column"]
         self._old_column = column
         self._min_datetime = np.min(X[column])
 
@@ -55,7 +63,7 @@ class DateTimeTransformer(object):
             new_column = column + "_Days_Diff_To_Min"
             self._new_columns += [new_column]
 
-    def transform(self, X):
+    def transform(self, X: DataFrame, **kwargs):
         column = self._old_column
 
         if "year" in self._transforms:
@@ -89,18 +97,6 @@ class DateTimeTransformer(object):
         X.drop(column, axis=1, inplace=True)
         return X
 
-    def to_json(self):
-        data_json = {
-            "new_columns": list(self._new_columns),
-            "old_column": self._old_column,
-            "min_datetime": str(self._min_datetime),
-            "transforms": list(self._transforms),
-        }
-        return data_json
-
-    def from_json(self, data_json):
-        self._new_columns = data_json.get("new_columns", None)
-        self._old_column = data_json.get("old_column", None)
-        d = data_json.get("min_datetime", None)
-        self._min_datetime = None if d is None else pd.to_datetime(d)
-        self._transforms = data_json.get("transforms", [])
+    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        super().from_dict(data_json, _min_datetime=lambda x: None if x is None else pd.to_datetime(x),
+                          **attribute_decoders)

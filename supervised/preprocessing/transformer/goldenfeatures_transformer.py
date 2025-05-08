@@ -1,11 +1,11 @@
 import itertools
 import json
-import os
 import time
 
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from pandas import DataFrame
 from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -16,7 +16,7 @@ from supervised.algorithms.registry import (
     REGRESSION,
 )
 from supervised.exceptions import AutoMLException
-from supervised.utils.jsonencoder import MLJSONEncoder
+from supervised.preprocessing.base_transformer import BaseTransformer
 
 
 def get_binary_score(X_train, y_train, X_test, y_test):
@@ -105,8 +105,9 @@ def get_score(item):
     return (diff_score, ratio_1_score, ratio_2_score, sum_score, multiply_score)
 
 
-class GoldenFeaturesTransformer(object):
+class GoldenFeaturesTransformer(BaseTransformer):
     def __init__(self, results_path=None, ml_task=None, features_count=None, n_jobs=-1):
+        super(GoldenFeaturesTransformer, self).__init__("golden_features", results_path)
         self._new_features = []
         self._new_columns = []
         self._ml_task = ml_task
@@ -121,16 +122,9 @@ class GoldenFeaturesTransformer(object):
             self._scorer = get_regression_score
 
         self._error = None
+        self.load()
 
-        self._result_file = "golden_features.json"
-        if results_path is not None:
-            self._result_path = os.path.join(results_path, self._result_file)
-
-            if os.path.exists(self._result_path):
-                with open(self._result_path, "r") as file:
-                    self.from_json(json.load(file), results_path)
-
-    def fit(self, X, y):
+    def fit(self, X: DataFrame, y: DataFrame = None, **fit_params):
         if self._new_features:
             return
         if self._error is not None and self._error:
@@ -192,9 +186,9 @@ class GoldenFeaturesTransformer(object):
         new_cols_cnt = np.min([100, np.max([10, int(0.1 * X.shape[1])])])
 
         if (
-            self._features_count is not None
-            and self._features_count > 0
-            and self._features_count < df.shape[0]
+                self._features_count is not None
+                and self._features_count > 0
+                and self._features_count < df.shape[0]
         ):
             new_cols_cnt = self._features_count
 
@@ -215,10 +209,10 @@ class GoldenFeaturesTransformer(object):
         self.save()
 
         print(
-            f"Created {len(self._new_features)} Golden Features in {np.round(time.time() - start_time,2)} seconds."
+            f"Created {len(self._new_features)} Golden Features in {np.round(time.time() - start_time, 2)} seconds."
         )
 
-    def transform(self, X):
+    def transform(self, X: DataFrame):
         for new_feature in self._new_features:
             new_col = "_".join(
                 [
@@ -243,27 +237,6 @@ class GoldenFeaturesTransformer(object):
                 X[new_col] = X[new_feature["feature1"]] * X[new_feature["feature2"]]
 
         return X
-
-    def to_json(self):
-        data_json = {
-            "new_features": self._new_features,
-            "new_columns": self._new_columns,
-            "ml_task": self._ml_task,
-        }
-        if self._error is not None and self._error:
-            data_json["error"] = self._error
-        return data_json
-
-    def from_json(self, data_json, results_path):
-        self._new_features = data_json.get("new_features", [])
-        self._new_columns = data_json.get("new_columns", [])
-        self._ml_task = data_json.get("ml_task")
-        self._error = data_json.get("error")
-        self._result_path = os.path.join(results_path, self._result_file)
-
-    def save(self):
-        with open(self._result_path, "w") as fout:
-            fout.write(json.dumps(self.to_json(), indent=4, cls=MLJSONEncoder))
 
     def _subsample(self, X, y):
         MAX_SIZE = 10000

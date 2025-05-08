@@ -1,16 +1,17 @@
-import os
 import time
 
-import joblib
 import numpy as np
+from pandas import DataFrame
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import StandardScaler
 
 from supervised.exceptions import AutoMLException
+from supervised.preprocessing.base_transformer import BaseTransformer
 
 
-class KMeansTransformer(object):
+class KMeansTransformer(BaseTransformer):
     def __init__(self, results_path=None, model_name=None, k_fold=None):
+        super(KMeansTransformer, self).__init__(f"kmeans_fold_{k_fold}", results_path)
         self._new_features = []
         self._input_columns = []
         self._error = None
@@ -18,15 +19,9 @@ class KMeansTransformer(object):
         self._scale = None
         self._model_name = model_name
         self._k_fold = k_fold
+        self.load()
 
-        if results_path is not None:
-            self._result_file = os.path.join(
-                self._model_name, f"kmeans_fold_{k_fold}.joblib"
-            )
-            self._result_path = os.path.join(results_path, self._result_file)
-            # self.try_load()
-
-    def fit(self, X, y):
+    def fit(self, X: DataFrame, y: DataFrame = None, **fit_params):
         if self._new_features:
             return
         if self._error is not None and self._error:
@@ -64,7 +59,7 @@ class KMeansTransformer(object):
         self._new_features = [f"Dist_Cluster_{i}" for i in range(n_clusters)]
         self._new_features += ["Cluster"]
 
-    def transform(self, X):
+    def transform(self, X: DataFrame) -> DataFrame:
         if self._kmeans is None:
             raise AutoMLException("KMeans not fitted")
 
@@ -80,36 +75,6 @@ class KMeansTransformer(object):
 
         return X
 
-    def to_json(self):
-        self.save()
-        data_json = {
-            "new_features": self._new_features,
-            "result_file": self._result_file,
-            "input_columns": self._input_columns,
-        }
-        if self._error is not None and self._error:
-            data_json["error"] = self._error
-        return data_json
-
-    def from_json(self, data_json, results_path):
-        self._new_features = data_json.get("new_features", [])
-        self._input_columns = data_json.get("input_columns", [])
-        self._result_file = data_json.get("result_file")
-        self._result_path = os.path.join(results_path, self._result_file)
-        self._error = data_json.get("error")
-        self.try_load()
-
-    def save(self):
-        joblib.dump(
-            {"kmeans": self._kmeans, "scale": self._scale},
-            self._result_path,
-            compress=True,
-        )
-
-    def try_load(self):
-        if os.path.exists(self._result_path):
-            data = joblib.load(self._result_path)
-            self._kmeans = data["kmeans"]
-            self._scale = data["scale"]
-
+    def load(self):
+        if super(KMeansTransformer, self).load():
             self._create_new_features_names()

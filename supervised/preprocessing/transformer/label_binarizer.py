@@ -1,14 +1,22 @@
+from typing import List, Dict, Any, Callable
+
 import numpy as np
+from pandas import DataFrame
+
+from supervised.utils.attribute_serializer import AttributeSerializer
+from supervised.preprocessing.base_transformer import BaseTransformer
 
 
-class LabelBinarizer(object):
+class LabelBinarizer(BaseTransformer, AttributeSerializer):
     def __init__(self):
+        super(LabelBinarizer, self).__init__("label_binarizer")
         self._new_columns = []
         self._uniq_values = None
         self._old_column = None
         self._old_column_dtype = None
 
-    def fit(self, X, column):
+    def fit(self, X: DataFrame, y: DataFrame = None, **kwargs):
+        column = kwargs['column']
         self._old_column = column
         self._old_column_dtype = str(X[column].dtype)
         self._uniq_values = np.unique(X[column].values)
@@ -20,10 +28,11 @@ class LabelBinarizer(object):
             for v in self._uniq_values:
                 self._new_columns.append(column + "_" + str(v))
 
-    def transform(self, X, column):
+    def transform(self, X: DataFrame, **kwargs):
+        column = kwargs['column']
         if len(self._uniq_values) == 2:
             X[column + "_" + str(self._uniq_values[1])] = (
-                X[column] == self._uniq_values[1]
+                    X[column] == self._uniq_values[1]
             ).astype(int)
         else:
             for v in self._uniq_values:
@@ -32,7 +41,7 @@ class LabelBinarizer(object):
         X.drop(column, axis=1, inplace=True)
         return X
 
-    def inverse_transform(self, X):
+    def inverse_transform(self, X: DataFrame, **kwargs) -> DataFrame:
         if self._old_column is None:
             return X
 
@@ -49,33 +58,12 @@ class LabelBinarizer(object):
         X.drop(self._new_columns, axis=1, inplace=True)
         return X
 
-    def to_json(self):
-        self._uniq_values = [str(i) for i in list(self._uniq_values)]
-        data_json = {
-            "new_columns": list(self._new_columns),
-            "unique_values": self._uniq_values,
-            "old_column": self._old_column,
-            "old_column_dtype": self._old_column_dtype,
-        }
+    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
+                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
+        return super().to_dict(exclude_callables_nones, exclude_attributes,
+                               _uniq_values=lambda x: [str(i) for i in list(x)], **attribute_encoders)
 
-        if (
-            "True" in self._uniq_values
-            and "False" in self._uniq_values
-            and len(self._uniq_values) == 2
-        ):
-            self._uniq_values = [False, True]
-
-        return data_json
-
-    def from_json(self, data_json):
-        self._new_columns = data_json.get("new_columns", None)
-        self._uniq_values = data_json.get("unique_values", None)
-        self._old_column = data_json.get("old_column", None)
-        self._old_column_dtype = data_json.get("old_column_dtype", None)
-
-        if (
-            "True" in self._uniq_values
-            and "False" in self._uniq_values
-            and len(self._uniq_values) == 2
-        ):
-            self._uniq_values = [False, True]
+    def from_dict(self, data_json: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
+        super().from_dict(data_json,
+                          _uniq_values=lambda x: [False, True] if "True" in x and "False" in x and len(x) == 2 else x,
+                          **attribute_decoders)
