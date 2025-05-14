@@ -1,11 +1,8 @@
-from typing import Dict, Any, Callable
-
 import numpy as np
-import pandas as pd
 from pandas import DataFrame
 
-from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.utils.attribute_serializer import AttributeSerializer
 
 
 class DateTimeTransformer(BaseTransformer, AttributeSerializer):
@@ -96,7 +93,3 @@ class DateTimeTransformer(BaseTransformer, AttributeSerializer):
 
         X.drop(column, axis=1, inplace=True)
         return X
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(params, _min_datetime=lambda x: None if x is None else pd.to_datetime(x),
-                          **attribute_decoders)

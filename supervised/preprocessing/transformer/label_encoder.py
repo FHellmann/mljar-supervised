@@ -1,13 +1,12 @@
 import logging
 from decimal import Decimal
-from typing import Dict, Any, List, Callable
 
 import numpy as np
 from pandas import DataFrame
 from sklearn import preprocessing as sk_preproc
 
-from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
@@ -45,15 +44,3 @@ class LabelEncoder(BaseTransformer, AttributeSerializer):
 
     def inverse_transform(self, X: DataFrame, **kwargs) -> DataFrame:
         return self.lbl.inverse_transform(X)
-
-    def to_dict(self, exclude_callables_nones: bool = False, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        return super().to_dict(exclude_callables_nones, exclude_attributes,
-                               lbl=lambda x: {str(cl): idx for idx, cl in enumerate(x.classes_)}, **attribute_encoders)
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(params, **attribute_decoders)
-        keys = np.array(list(params.keys()))
-        if len(keys) == 2 and "False" in keys and "True" in keys:
-            keys = np.array([False, True])
-        self.lbl.classes_ = keys

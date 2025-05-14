@@ -8,6 +8,7 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
 )
 from supervised.exceptions import AutoMLException
+from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 from supervised.preprocessing.transformer.datetime_transformer import DateTimeTransformer
 from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
 from supervised.preprocessing.transformer.goldenfeatures_transformer import (
@@ -16,7 +17,6 @@ from supervised.preprocessing.transformer.goldenfeatures_transformer import (
 from supervised.preprocessing.transformer.kmeans_transformer import KMeansTransformer
 from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
 from supervised.preprocessing.transformer.label_encoder import LabelEncoder
-from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
 from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
 from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
 from supervised.preprocessing.transformer.text_transformer import TextTransformer
@@ -28,11 +28,11 @@ logger.setLevel(LOG_LEVEL)
 
 class Preprocessing(object):
     def __init__(
-        self,
-        preprocessing_params={"target_preprocessing": [], "columns_preprocessing": {}},
-        model_name=None,
-        k_fold=None,
-        repeat=None,
+            self,
+            preprocessing_params={"target_preprocessing": [], "columns_preprocessing": {}},
+            model_name=None,
+            k_fold=None,
+            repeat=None,
     ):
         self._params = preprocessing_params
 
@@ -141,7 +141,7 @@ class Preprocessing(object):
         numeric_cols = []  # get numeric cols before text transformations
         # needed for golden features
         if X_train is not None and (
-            "golden_features" in self._params or "kmeans_features" in self._params
+                "golden_features" in self._params or "kmeans_features" in self._params
         ):
             numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
 
@@ -241,29 +241,29 @@ class Preprocessing(object):
                 )
             )
             if (
-                len(cols_to_process)
-                and len(new_datetime_columns)
-                and scale_method == ScaleTransformer.SCALE_NORMAL
+                    len(cols_to_process)
+                    and len(new_datetime_columns)
+                    and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_datetime_columns
             if (
-                len(cols_to_process)
-                and len(new_text_columns)
-                and scale_method == ScaleTransformer.SCALE_NORMAL
+                    len(cols_to_process)
+                    and len(new_text_columns)
+                    and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_text_columns
 
             if (
-                len(cols_to_process)
-                and len(golden_columns)
-                and scale_method == ScaleTransformer.SCALE_NORMAL
+                    len(cols_to_process)
+                    and len(golden_columns)
+                    and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += golden_columns
 
             if (
-                len(cols_to_process)
-                and len(kmeans_columns)
-                and scale_method == ScaleTransformer.SCALE_NORMAL
+                    len(cols_to_process)
+                    and len(kmeans_columns)
+                    and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += kmeans_columns
 
@@ -367,9 +367,9 @@ class Preprocessing(object):
         # to be sure that all missing are filled
         # in case new data there can be gaps!
         if (
-            X_validation is not None
-            and pd.isnull(X_validation).sum().sum() > 0
-            and len(self._params["columns_preprocessing"]) > 0
+                X_validation is not None
+                and pd.isnull(X_validation).sum().sum() > 0
+                and len(self._params["columns_preprocessing"]) > 0
         ):
             # there is something missing, fill it
             # we should notice user about it!
@@ -409,7 +409,7 @@ class Preprocessing(object):
         if self._add_random_feature:
             # -1, 1, with 0 mean
             X_validation["random_feature"] = (
-                np.random.rand(X_validation.shape[0]) * 2.0 - 1.0
+                    np.random.rand(X_validation.shape[0]) * 2.0 - 1.0
             )
 
         if self._drop_features and X_validation is not None:

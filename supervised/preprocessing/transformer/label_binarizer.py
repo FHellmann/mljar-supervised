@@ -1,10 +1,8 @@
-from typing import List, Dict, Any, Callable
-
 import numpy as np
 from pandas import DataFrame
 
-from supervised.utils.attribute_serializer import AttributeSerializer
 from supervised.preprocessing.base_transformer import BaseTransformer
+from supervised.utils.attribute_serializer import AttributeSerializer
 
 
 class LabelBinarizer(BaseTransformer, AttributeSerializer):
@@ -57,13 +55,3 @@ class LabelBinarizer(BaseTransformer, AttributeSerializer):
         X[self._old_column] = old_col
         X.drop(self._new_columns, axis=1, inplace=True)
         return X
-
-    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        return super().to_dict(exclude_callables_nones, exclude_attributes,
-                               _uniq_values=lambda x: [str(i) for i in list(x)], **attribute_encoders)
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        super().from_dict(params,
-                          _uniq_values=lambda x: [False, True] if "True" in x and "False" in x and len(x) == 2 else x,
-                          **attribute_decoders)

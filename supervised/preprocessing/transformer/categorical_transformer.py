@@ -1,5 +1,3 @@
-from typing import List, Callable, Any, Dict
-
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
@@ -9,10 +7,9 @@ from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
 from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
 from supervised.preprocessing.transformer.label_encoder import LabelEncoder
 from supervised.preprocessing.transformer.loo_encoder import LooEncoder
-from supervised.utils.attribute_serializer import AttributeSerializer
 
 
-class CategoricalTransformer(BaseTransformer, AttributeSerializer):
+class CategoricalTransformer(BaseTransformer):
     CONVERT_ONE_HOT = "categorical_to_onehot"
     CONVERT_INTEGER = "categorical_to_int"
     CONVERT_LOO = "categorical_to_loo"
@@ -89,73 +86,6 @@ class CategoricalTransformer(BaseTransformer, AttributeSerializer):
                     X.loc[:, column] = transformed_values
 
             return X
-
-    def inverse_transform(self, X: DataFrame, **kwargs):
-        for column, lbl_params in self._convert_params.items():
-            if "unique_values" in lbl_params and "new_columns" in lbl_params:
-                # convert to one hot
-                lbl = LabelBinarizer()
-                lbl.from_dict(lbl_params)
-                X = lbl.inverse_transform(X, column=column)  # should raise exception
-            else:
-                # convert to integer
-                lbl = LabelEncoder()
-                lbl.from_dict(lbl_params)
-                transformed_values = lbl.inverse_transform(X.loc[:, column])
-                # check for pandas FutureWarning: Setting an item
-                # of incompatible dtype is deprecated and will raise
-                # in a future error of pandas.
-                if transformed_values.dtype != X.loc[:, column].dtype and \
-                        (X.loc[:, column].dtype == bool or X.loc[:, column].dtype == int):
-                    X = X.astype({column: transformed_values.dtype})
-                X.loc[:, column] = transformed_values
-
-        return X
-
-    def to_dict(self, exclude_callables_nones: bool = False, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        return super().to_dict(exclude_callables_nones=exclude_callables_nones, exclude_attributes=exclude_attributes,
-                               _enc=lambda x: x.to_dict(), **attribute_encoders)
-
-    # def to_json(self):
-    #     params = {}
-    #     if (
-    #         self._convert_method == CategoricalTransformer.CONVERT_LOO
-    #         and self._columns
-    #     ):
-    #         params = {
-    #             "enc": self._enc.to_json(),
-    #             "convert_method": self._convert_method,
-    #             "columns": self._columns,
-    #         }
-    #     elif len(self._convert_params) > 0:
-    #         params = {
-    #             "convert_method": self._convert_method,
-    #             "convert_params": self._convert_params,
-    #             "columns": self._columns,
-    #         }
-    #     return params
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        if params is not None:
-            super().from_dict(params, _enc=lambda x: LooEncoder().from_dict(x), **attribute_decoders)
-        else:
-            self._convert_method, self._convert_params = None, None
-            self._columns = []
-
-    # def from_json(self, params):
-    #     if params is not None:
-    #         self._convert_method = params.get("convert_method", None)
-    #         self._columns = params.get("columns", [])
-    #         if self._convert_method == CategoricalTransformer.CONVERT_LOO:
-    #             self._enc = LooEncoder()
-    #             self._enc.from_dict(params.get("enc", {}))
-    #         else:
-    #             self._convert_params = params.get("convert_params", {})
-    #
-    #     else:
-    #         self._convert_method, self._convert_params = None, None
-    #         self._columns = []
 
     @staticmethod
     def get_categorical_encoding(X, y, column):

@@ -1,10 +1,11 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Optional
 
 from pandas import DataFrame
+from sklearn.base import BaseEstimator, ClassNamePrefixFeaturesOutMixin
 
 
-class BaseTransformer(object):
+class BaseTransformer(ABC, ClassNamePrefixFeaturesOutMixin, BaseEstimator):
     """
     Abstract base class for data transformers in a machine learning pipeline.
 

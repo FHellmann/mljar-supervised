@@ -75,6 +75,6 @@ class KMeansTransformer(BaseTransformer):
 
         return X
 
-    def load(self):
-        if super(KMeansTransformer, self).load():
-            self._create_new_features_names()
+    def set_params(self, **params):
+        super().set_params(**params)
+        self._create_new_features_names()

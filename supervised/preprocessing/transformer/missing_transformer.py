@@ -1,5 +1,3 @@
-from typing import List, Callable, Any, Dict
-
 import numpy as np
 import pandas as pd
 
@@ -75,21 +73,3 @@ class MissingValuesTransformer(BaseTransformer, AttributeSerializer):
     def _make_sure_na_filled(self, X):
         self._fit_na_fill(X)
         return self._transform_na_fill(X)
-
-    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        if len(self._na_fill_params) == 0:
-            return {}
-        return super().to_dict(exclude_callables_nones, exclude_attributes,
-                               _datetime_columns=lambda x: list(x),
-                               _na_fill_params=lambda x: {key: str(value) for key, value in x.items()},
-                               **attribute_encoders)
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        if params is not None:
-            super().from_dict(params,
-                              _na_fill_params=lambda x: {key: pd.to_datetime(value) for key, value in x.items()},
-                              **attribute_decoders)
-        else:
-            self._na_fill_method, self._na_fill_params = None, None
-            self._datetime_columns = []

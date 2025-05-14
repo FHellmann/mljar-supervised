@@ -1,7 +1,5 @@
 import warnings
-from typing import List, Callable, Any, Dict
 
-import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -48,29 +46,3 @@ class TextTransformer(BaseTransformer, AttributeSerializer):
             X.loc[ii, self._new_columns] = vect.toarray()
             X.drop(self._old_column, axis=1, inplace=True)
         return X
-
-    def to_dict(self, exclude_callables_nones: bool = True, exclude_attributes: List[str] = None,
-                **attribute_encoders: Callable[[Any], Any]) -> Dict[str, Any] | None:
-        def vectorizer_encoder(vectorizer):
-            return {
-                "vocabulary": self._vectorizer.vocabulary_,
-                "fixed_vocabulary": {key: int(value) for key, value in vectorizer.vocabulary_.items()},
-                "idf": list(self._vectorizer.idf_),
-            }
-
-        return super().to_dict(exclude_callables_nones, exclude_attributes,
-                               _vectorizer=vectorizer_encoder, **attribute_encoders)
-
-    def from_dict(self, params: Dict[str, Any], **attribute_decoders: Callable[[Any], Any]) -> None:
-        def vectorizer_decoder(data):
-            vectorizer = TfidfVectorizer(
-                analyzer="word",
-                stop_words="english",
-                lowercase=True,
-                max_features=self._max_features,
-            )
-            vectorizer.vocabulary_ = data.get("vocabulary")
-            vectorizer.fixed_vocabulary_ = data.get("fixed_vocabulary")
-            vectorizer.idf_ = np.array(data.get("idf"))
-
-        super().from_dict(params, **attribute_decoders)
