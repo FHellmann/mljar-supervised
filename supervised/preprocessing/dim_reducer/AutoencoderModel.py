@@ -2,6 +2,7 @@ import logging
 
 import torch
 from torch import nn
+from torch.nn.modules.module import T
 
 from supervised.utils.config import LOG_LEVEL
 
@@ -63,6 +64,46 @@ class Autoencoder(nn.Module):
         # Pack the layers into a Sequential module to get the "decoder"
         self.decoder = nn.Sequential(*decoder_layers)
 
+    def train_model(self, x_train, params):
+        """
+        Train the autoencoder on the provided training data.
+
+        :param x_train: Training data.
+        :param params: Dictionary containing model parameters.
+        """
+        logger.debug("Autoencoder.train")
+
+        device = params.get("device", torch.device("cpu"))
+        batch_size = params.get("batch_size", 32)
+        epochs = params.get("epochs", 10)
+        lr = params.get("lr", 0.001)
+        verbose = params.get("verbose", True)
+
+        self.to(device)
+        self.train()
+
+        x_tensor = torch.tensor(x_train, dtype=torch.float32).to(device)
+        dataset = torch.utils.data.TensorDataset(x_tensor)
+        loader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=True
+        )
+
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        criterion = nn.MSELoss()
+
+        for epoch in range(epochs):
+            total_loss = 0.0
+            for (batch_x,) in loader:
+                optimizer.zero_grad()
+                reconstruction = self.forward(batch_x)
+                loss = criterion(reconstruction, batch_x)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+
+            if verbose:
+                logger.info(f"Epoch {epoch + 1}/{epochs} | Loss: {total_loss:.4f}")
+
     def forward(self, x):
         """
         Send data through the encoder and decoder.
@@ -87,4 +128,9 @@ class Autoencoder(nn.Module):
 autoencoder_params = {
     "layer_config": [[512, 256, 128], [512, 256, 128, 64], [512, 256, 128, 64, 32]],
     "bottleneck_dim": [64, 32, 16, 8],
+    "epochs": [10, 25, 50, 100],
+    "batch_size": [16, 32, 64, 128],
+    "lr": [0.001, 0.01],
+    "device": ["cpu", "cuda"],
+    "verbose": [True, False],
 }
