@@ -172,16 +172,3 @@ class TorchNetwork(nn.Module):
             else:
                 return torch.softmax(logits, dim=1).numpy()
             # Usage of numpy() for compatibility with sklearn
-
-
-torch_net_params = {
-    "hidden_config": [{1: 128, 2: 64, 3: 32}, {1: 256, 2: 128, 3: 64, 4: 32}],
-    "dropout": [True, False],
-    "dropout_rate": [0.25, 0.5],
-}
-
-default_torch_net_params = {
-    "hidden_config": {1: 256, 2: 128, 3: 64, 4: 32},
-    "dropout": False,
-    "dropout_rate": 0.5,
-}
