@@ -48,6 +48,7 @@ class TorchAlgorithm(BaseAlgorithm):
                 output_dim=output_dim,
                 task_type=self.params.get("ml_task"),
                 params=torch_net_params,
+                target_specification=self.params.get("target_specification"),
             )
 
         # Training of torch network
@@ -94,32 +95,35 @@ class TorchAlgorithm(BaseAlgorithm):
             output_dim=output_dim,
             task_type=self.params.get("ml_task"),
             params=self.params,
+            target_specification=self.params.get("target_specification"),
         )
         self.model.load_state_dict(torch.load(model_file_path))
         self.model.network.eval()
         self.is_model_fitted = True
         self.model_file_path = model_file_path
 
+
 torchnet_params = {
     # Training parameters
     "lr": [0.01, 0.001, 0.0001],
     "epochs": [50, 100],
     "batch_size": [16, 32, 64],
-
     # Architecture parameters
     "hidden_config": [{1: 128, 2: 64, 3: 32}, {1: 256, 2: 128, 3: 64, 4: 32}],
     "dropout": [True, False],
     "dropout_rate": [0.25, 0.5],
+    # Classification parameters
+    "target_specification": 1,
 }
 
 default_params = {
     "lr": 0.01,
     "epochs": 50,
     "batch_size": 32,
-
     "hidden_config": {1: 256, 2: 128, 3: 64, 4: 32},
     "dropout": False,
     "dropout_rate": 0.5,
+    "target_specification": 1,
 }
 
 
