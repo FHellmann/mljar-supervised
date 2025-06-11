@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report
-from supervised.algorithms.torch_algorithm import TorchAlgorithm
+from supervised.algorithms.torch_net_algorithm import TorchAlgorithm
 
 
 def test_torch_algorithm_basic():
