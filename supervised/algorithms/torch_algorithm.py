@@ -101,12 +101,12 @@ class TorchAlgorithm(BaseAlgorithm):
         self.model_file_path = model_file_path
 
 torchnet_params = {
-    # Trainings-Parameter
+    # Training parameters
     "lr": [0.01, 0.001, 0.0001],
     "epochs": [50, 100],
     "batch_size": [16, 32, 64],
 
-    # Architektur-Parameter
+    # Architecture parameters
     "hidden_config": [{1: 128, 2: 64, 3: 32}, {1: 256, 2: 128, 3: 64, 4: 32}],
     "dropout": [True, False],
     "dropout_rate": [0.25, 0.5],
