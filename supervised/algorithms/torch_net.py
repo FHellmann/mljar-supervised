@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 
 from supervised.preprocessing.torch_preparer.DataPreparer import DataPreparer
-from supervised.utils.model_interface import AbstractModel
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
