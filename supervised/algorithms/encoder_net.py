@@ -199,18 +199,19 @@ class EncoderClassificationNetwork(nn.Module):
             probs = torch.softmax(logits, dim=1).cpu().numpy()
             return probs
 
+    def _label_output(self, y, target_specification):
+        """
+        Label the output data.
 
-encoder_net_params = {
-    "freeze_layers": [1, 2, 3, 4, 5],
-    "device": ["cpu", "cuda"],
-    "epochs": [10, 25, 50, 100],
-    "batch_size": [16, 32, 64, 128],
-}
+        :param y: Target variable.
+        :param target_specification: Target specification for binary classification.
 
+        :return: Target variable with labels.
+        """
 
-default_encoder_net_params = {
-    "freeze_layers": 1,
-    "device": "cpu",
-    "epochs": [10],
-    "batch_size": [32],
-}
+        y = np.asarray(y)
+        if self.output_dim == 1:
+            y_processed = np.array([1 if label == target_specification else 0 for label in y], dtype=np.float32)
+        else:
+            y_processed = y.astype(np.int64)
+        return y_processed
