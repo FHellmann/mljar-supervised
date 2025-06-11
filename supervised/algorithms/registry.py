@@ -74,3 +74,4 @@ import supervised.algorithms.linear
 import supervised.algorithms.nn
 import supervised.algorithms.random_forest
 import supervised.algorithms.xgboost
+import supervised.algorithms.torch_algorithm
