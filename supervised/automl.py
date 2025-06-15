@@ -83,6 +83,9 @@ class AutoML(BaseAutoML):
         n_jobs: int = -1,
         verbose: int = 1,
         random_state: int = 1234,
+        # TODO
+        use_pca: bool = False,
+        pca_variance_threshold = 0.95
     ):
         """
         Initialize `AutoML` object.
@@ -400,6 +403,9 @@ class AutoML(BaseAutoML):
         self.underprivileged_groups = underprivileged_groups
         self.n_jobs = n_jobs
         self.random_state = random_state
+        # TODO
+        self.use_pca = use_pca
+        self._pca_variance_threshold = pca_variance_threshold
 
     def fit(
         self,

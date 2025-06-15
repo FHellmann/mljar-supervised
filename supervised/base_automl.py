@@ -365,6 +365,10 @@ class BaseAutoML(BaseEstimator, ABC):
 
         params["max_time_for_learner"] = max_time_for_learner
 
+        # TODO
+        params["use_pca"] = self.use_pca
+        params["_pca_variance_threshold"] = self._pca_variance_threshold
+
         total_time_constraint = TotalTimeConstraint(
             {
                 "total_time_limit": self._total_time_limit

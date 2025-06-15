@@ -8,16 +8,25 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
 )
 from supervised.exceptions import AutoMLException
-from supervised.preprocessing.transformer.categorical_transformer import CategoricalTransformer
-from supervised.preprocessing.transformer.datetime_transformer import DateTimeTransformer
-from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
+from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
+from supervised.preprocessing.transformer.categorical_transformer import (
+    CategoricalTransformer,
+)
+from supervised.preprocessing.transformer.datetime_transformer import (
+    DateTimeTransformer,
+)
+from supervised.preprocessing.transformer.exclude_missing_target import (
+    ExcludeRowsMissingTargetTransformer,
+)
 from supervised.preprocessing.transformer.goldenfeatures_transformer import (
     GoldenFeaturesTransformer,
 )
 from supervised.preprocessing.transformer.kmeans_transformer import KMeansTransformer
 from supervised.preprocessing.transformer.label_binarizer import LabelBinarizer
 from supervised.preprocessing.transformer.label_encoder import LabelEncoder
-from supervised.preprocessing.transformer.missing_transformer import MissingValuesTransformer
+from supervised.preprocessing.transformer.missing_transformer import (
+    MissingValuesTransformer,
+)
 from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
 from supervised.preprocessing.transformer.text_transformer import TextTransformer
 from supervised.utils.config import LOG_LEVEL
@@ -28,11 +37,14 @@ logger.setLevel(LOG_LEVEL)
 
 class Preprocessing(object):
     def __init__(
-            self,
-            preprocessing_params={"target_preprocessing": [], "columns_preprocessing": {}},
-            model_name=None,
-            k_fold=None,
-            repeat=None,
+        self,
+        preprocessing_params={"target_preprocessing": [], "columns_preprocessing": {}},
+        model_name=None,
+        k_fold=None,
+        repeat=None,
+        # TODO
+        use_pca=False,
+        pca_variance_threshold=0.95,
     ):
         self._params = preprocessing_params
 
@@ -58,6 +70,10 @@ class Preprocessing(object):
         self._k_fold = k_fold
         self._repeat = repeat
 
+        # TODO
+        self.use_pca = use_pca
+        self._pca_variance_threshold = pca_variance_threshold
+
     def _exclude_missing_targets(self, X=None, y=None):
         # check if there are missing values in target column
         if y is None:
@@ -82,8 +98,10 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing params: {}".format(target_preprocessing))
 
-            X_train, y_train, sample_weight, _ = ExcludeRowsMissingTargetTransformer.transform(
-                X_train, y_train, sample_weight
+            X_train, y_train, sample_weight, _ = (
+                ExcludeRowsMissingTargetTransformer.transform(
+                    X_train, y_train, sample_weight
+                )
             )
 
             if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
@@ -114,7 +132,9 @@ class Preprocessing(object):
             if ScaleTransformer.SCALE_NORMAL in target_preprocessing:
                 logger.debug("Scale normal")
 
-                self._scale_y = ScaleTransformer(["target"], scale_method=ScaleTransformer.SCALE_NORMAL)
+                self._scale_y = ScaleTransformer(
+                    ["target"], scale_method=ScaleTransformer.SCALE_NORMAL
+                )
                 y_train = pd.DataFrame({"target": y_train})
                 self._scale_y.fit(y_train)
                 y_train = self._scale_y.transform(y_train)
@@ -141,7 +161,7 @@ class Preprocessing(object):
         numeric_cols = []  # get numeric cols before text transformations
         # needed for golden features
         if X_train is not None and (
-                "golden_features" in self._params or "kmeans_features" in self._params
+            "golden_features" in self._params or "kmeans_features" in self._params
         ):
             numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
 
@@ -233,7 +253,10 @@ class Preprocessing(object):
             new_datetime_columns += t._new_columns
 
         # SCALE
-        for scale_method in [ScaleTransformer.SCALE_NORMAL, ScaleTransformer.SCALE_LOG_AND_NORMAL]:
+        for scale_method in [
+            ScaleTransformer.SCALE_NORMAL,
+            ScaleTransformer.SCALE_LOG_AND_NORMAL,
+        ]:
             cols_to_process = list(
                 filter(
                     lambda k: scale_method in columns_preprocessing[k],
@@ -241,29 +264,29 @@ class Preprocessing(object):
                 )
             )
             if (
-                    len(cols_to_process)
-                    and len(new_datetime_columns)
-                    and scale_method == ScaleTransformer.SCALE_NORMAL
+                len(cols_to_process)
+                and len(new_datetime_columns)
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_datetime_columns
             if (
-                    len(cols_to_process)
-                    and len(new_text_columns)
-                    and scale_method == ScaleTransformer.SCALE_NORMAL
+                len(cols_to_process)
+                and len(new_text_columns)
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += new_text_columns
 
             if (
-                    len(cols_to_process)
-                    and len(golden_columns)
-                    and scale_method == ScaleTransformer.SCALE_NORMAL
+                len(cols_to_process)
+                and len(golden_columns)
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += golden_columns
 
             if (
-                    len(cols_to_process)
-                    and len(kmeans_columns)
-                    and scale_method == ScaleTransformer.SCALE_NORMAL
+                len(cols_to_process)
+                and len(kmeans_columns)
+                and scale_method == ScaleTransformer.SCALE_NORMAL
             ):
                 cols_to_process += kmeans_columns
 
@@ -272,6 +295,26 @@ class Preprocessing(object):
                 scale.fit(X_train)
                 X_train = scale.transform(X_train)
                 self._scale += [scale]
+
+        # TODO
+        # PCA
+        if self.use_pca:
+            numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
+            if numeric_cols:
+                non_numeric_cols = X_train.select_dtypes(exclude="number").columns.tolist()
+                X_non_numeric = X_train[non_numeric_cols]
+
+                self._pca = PCATransformer(variance_threshold=self._pca_variance_threshold)
+                self._pca.fit(X_train[numeric_cols])
+                X_numeric_pca = self._pca.transform(X_train[numeric_cols])
+
+                X_train = pd.concat(
+                    [
+                        X_non_numeric.reset_index(drop=True),
+                        X_numeric_pca.reset_index(drop=True),
+                    ],
+                    axis=1,
+                )
 
         if self._add_random_feature:
             # -1, 1, with 0 mean
@@ -367,9 +410,9 @@ class Preprocessing(object):
         # to be sure that all missing are filled
         # in case new data there can be gaps!
         if (
-                X_validation is not None
-                and pd.isnull(X_validation).sum().sum() > 0
-                and len(self._params["columns_preprocessing"]) > 0
+            X_validation is not None
+            and pd.isnull(X_validation).sum().sum() > 0
+            and len(self._params["columns_preprocessing"]) > 0
         ):
             # there is something missing, fill it
             # we should notice user about it!
@@ -406,10 +449,29 @@ class Preprocessing(object):
             if X_validation is not None and scale is not None:
                 X_validation = scale.transform(X_validation)
 
+        # TODO
+        if self.use_pca and hasattr(self, "_pca") and self._pca is not None:
+            numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
+            non_numeric_cols = X_validation.select_dtypes(
+                exclude="number"
+            ).columns.tolist()
+
+            if numeric_cols:
+                X_non_numeric = X_validation[non_numeric_cols]
+
+                X_numeric_pca = self._pca.transform(X_validation[numeric_cols])
+                X_validation = pd.concat(
+                    [
+                        X_non_numeric.reset_index(drop=True),
+                        X_numeric_pca.reset_index(drop=True),
+                    ],
+                    axis=1,
+                )
+
         if self._add_random_feature:
             # -1, 1, with 0 mean
             X_validation["random_feature"] = (
-                    np.random.rand(X_validation.shape[0]) * 2.0 - 1.0
+                np.random.rand(X_validation.shape[0]) * 2.0 - 1.0
             )
 
         if self._drop_features and X_validation is not None:
@@ -527,6 +589,8 @@ class Preprocessing(object):
 
         return pd.DataFrame({"prediction": y})
 
+
+    # todo
     def to_json(self):
         preprocessing_params = {}
         if self._remove_columns:

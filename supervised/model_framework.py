@@ -180,10 +180,19 @@ class ModelFramework:
                 if "sample_weight" in train_data:
                     logger.debug("Sample weight available during the training.")
 
+
+                # TODO
                 # the proprocessing is done at every validation step
                 self.preprocessings += [
                     Preprocessing(
-                        self.preprocessing_params, self.get_name(), k_fold, repeat
+                        self.preprocessing_params,
+                        self.get_name(),
+                        k_fold,
+                        repeat,
+                        use_pca=self.params.get("use_pca", False),
+                        pca_variance_threshold=self.params.get(
+                            "_pca_variance_threshold", 0.95
+                        ),
                     )
                 ]
 
@@ -492,9 +501,11 @@ class ModelFramework:
                 sample_weight,
                 self._ml_task,
                 sensitive_features,
-                self._fairness_metric
-                if self._ml_task != REGRESSION
-                else f"{self._fairness_metric}@{self.get_metric_name()}",
+                (
+                    self._fairness_metric
+                    if self._ml_task != REGRESSION
+                    else f"{self._fairness_metric}@{self.get_metric_name()}"
+                ),
                 self._fairness_threshold,
                 self._privileged_groups,
                 self._underprivileged_groups,
