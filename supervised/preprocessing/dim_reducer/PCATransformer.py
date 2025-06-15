@@ -38,7 +38,6 @@ class PCATransformer(BaseTransformer, AttributeStorage):
         X_scaled = self._scale.transform(X[self._input_columns])
         X_pca = self._pca.transform(X_scaled)
 
-        df_pca = DataFrame(X_pca, columns=self._new_features, index=X.index)
         X = X.copy()
         X[self._new_features] = X_pca
 
