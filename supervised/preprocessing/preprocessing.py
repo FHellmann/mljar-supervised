@@ -9,6 +9,7 @@ from supervised.algorithms.registry import (
 )
 from supervised.exceptions import AutoMLException
 from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
+from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.transformer.categorical_transformer import (
     CategoricalTransformer,
 )
@@ -45,6 +46,7 @@ class Preprocessing(object):
         # TODO
         dim_reduction_method=None,
         pca_variance_threshold=0.95,
+        svd_components=2,
     ):
         self._params = preprocessing_params
 
@@ -72,7 +74,10 @@ class Preprocessing(object):
 
         # TODO
         self.dim_reduction_method = dim_reduction_method
+        self._pca = None
+        self._svd = None
         self._pca_variance_threshold = pca_variance_threshold
+        self._svd_components = svd_components
 
     def _exclude_missing_targets(self, X=None, y=None):
         # check if there are missing values in target column
@@ -299,8 +304,8 @@ class Preprocessing(object):
                 self._scale += [scale]
 
         # TODO
-        # PCA
-        if self.dim_reduction_method == "pca":
+        # Dim reduction
+        if self.dim_reduction_method is not None:
             numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
             if numeric_cols:
                 non_numeric_cols = X_train.select_dtypes(
@@ -308,19 +313,33 @@ class Preprocessing(object):
                 ).columns.tolist()
                 X_non_numeric = X_train[non_numeric_cols]
 
-                self._pca = PCATransformer(
-                    variance_threshold=self._pca_variance_threshold
-                )
-                self._pca.fit(X_train[numeric_cols])
-                X_numeric_pca = self._pca.transform(X_train[numeric_cols])
+                if self.dim_reduction_method == "pca":
+                    self._pca = PCATransformer(
+                        variance_threshold=self._pca_variance_threshold
+                    )
+                    self._pca.fit(X_train[numeric_cols])
+                    X_numeric_pca = self._pca.transform(X_train[numeric_cols])
 
-                X_train = pd.concat(
-                    [
-                        X_non_numeric.reset_index(drop=True),
-                        X_numeric_pca.reset_index(drop=True),
-                    ],
-                    axis=1,
-                )
+                    X_train = pd.concat(
+                        [
+                            X_non_numeric.reset_index(drop=True),
+                            X_numeric_pca.reset_index(drop=True),
+                        ],
+                        axis=1,
+                    )
+
+                elif self.dim_reduction_method == "svd":
+                    self._svd = SVDTransformer(n_components=self._svd_components)
+                    self._svd.fit(X_train[numeric_cols])
+                    X_numeric_svd = self._svd.transform(X_train[numeric_cols])
+
+                    X_train = pd.concat(
+                        [
+                            X_non_numeric.reset_index(drop=True),
+                            X_numeric_svd.reset_index(drop=True),
+                        ],
+                        axis=1,
+                    )
 
         if self._add_random_feature:
             # -1, 1, with 0 mean
@@ -457,9 +476,11 @@ class Preprocessing(object):
 
         # TODO
         if (
-            self.dim_reduction_method == "pca"
+            self.dim_reduction_method in ["pca", "svd"]
             and hasattr(self, "_pca")
+            or hasattr(self, "_svd")
             and self._pca is not None
+            or self._svd is not None
         ):
             numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
             non_numeric_cols = X_validation.select_dtypes(
@@ -469,14 +490,24 @@ class Preprocessing(object):
             if numeric_cols:
                 X_non_numeric = X_validation[non_numeric_cols]
 
-                X_numeric_pca = self._pca.transform(X_validation[numeric_cols])
-                X_validation = pd.concat(
-                    [
-                        X_non_numeric.reset_index(drop=True),
-                        X_numeric_pca.reset_index(drop=True),
-                    ],
-                    axis=1,
-                )
+                if self.dim_reduction_method=="pca":
+                    X_numeric_pca = self._pca.transform(X_validation[numeric_cols])
+                    X_validation = pd.concat(
+                        [
+                            X_non_numeric.reset_index(drop=True),
+                            X_numeric_pca.reset_index(drop=True),
+                        ],
+                        axis=1,
+                    )
+                elif self.dim_reduction_method=="svd":
+                    X_numeric_svd = self._svd.transform(X_validation[numeric_cols])
+                    X_validation = pd.concat(
+                        [
+                            X_non_numeric.reset_index(drop=True),
+                            X_numeric_svd.reset_index(drop=True),
+                        ],
+                        axis=1,
+                    )
 
         if self._add_random_feature:
             # -1, 1, with 0 mean

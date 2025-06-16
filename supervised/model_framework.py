@@ -193,6 +193,7 @@ class ModelFramework:
                         pca_variance_threshold=self.params.get(
                             "_pca_variance_threshold", 0.95
                         ),
+                        svd_components=self.params.get("svd_components", 2),
                     )
                 ]
 

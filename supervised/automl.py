@@ -85,6 +85,7 @@ class AutoML(BaseAutoML):
         # TODO
         dim_reduction_method: str = None,
         pca_variance_threshold=0.95,
+        svd_components=2
     ):
         """
         Initialize `AutoML` object.
@@ -405,6 +406,7 @@ class AutoML(BaseAutoML):
         # TODO
         self.dim_reduction_method = dim_reduction_method
         self.pca_variance_threshold = pca_variance_threshold
+        self.svd_copomnents = svd_components
 
     def fit(
         self,

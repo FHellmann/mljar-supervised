@@ -1,6 +1,5 @@
 from typing import Optional
 
-import pandas as pd
 from pandas import DataFrame
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA

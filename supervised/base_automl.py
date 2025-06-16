@@ -28,6 +28,7 @@ from supervised.ensemble import Ensemble
 from supervised.exceptions import AutoMLException, NotTrainedException
 from supervised.model_framework import ModelFramework
 from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
+from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.transformer.exclude_missing_target import (
     ExcludeRowsMissingTargetTransformer,
 )
@@ -114,9 +115,11 @@ class BaseAutoML(BaseEstimator, ABC):
         self._n_jobs = -1
         self._id = str(uuid.uuid4())
         # TODO
-        self._dim_reduction_method  = None
+        self._dim_reduction_method = None
         self._pca_variance_threshold = 0.9
+        self._svd_components = 2
         self._pca = None
+        self._svd = None
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
@@ -376,6 +379,7 @@ class BaseAutoML(BaseEstimator, ABC):
         # TODO
         params["dim_reduction_method"] = self._dim_reduction_method
         params["_pca_variance_threshold"] = self._pca_variance_threshold
+        params["_svd_components"] = self._svd_components
 
         total_time_constraint = TotalTimeConstraint(
             {
@@ -806,14 +810,12 @@ class BaseAutoML(BaseEstimator, ABC):
         # TODO: danach wird y = None
         print(f"y before Transformer: {y.head()}")
         transformer = ExcludeRowsMissingTargetTransformer()
-        X, y, sample_weight, sensitive_features = (
-            transformer.transform(
-                X=X,
-                y=y,
-                sample_weight=sample_weight,
-                sensitive_features=sensitive_features,
-                warn=True,
-            )
+        X, y, sample_weight, sensitive_features = transformer.transform(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            sensitive_features=sensitive_features,
+            warn=True,
         )
 
         print(
@@ -1007,14 +1009,21 @@ class BaseAutoML(BaseEstimator, ABC):
         )
 
         # TODO
-        # Optional: Use pca
-        if self._dim_reduction_method=="pca":
+        # Optional: Use dim reduction method
+        if self._dim_reduction_method == "pca":
             pca_transformer = PCATransformer(
                 variance_threshold=self._pca_variance_threshold
             )
             pca_transformer.fit(X)
             X = pca_transformer.transform(X)
             self._pca = pca_transformer
+        if self._dim_reduction_method == "svd":
+            svd_transformer = SVDTransformer(
+                n_components=self._svd_components,
+            )
+            svd_transformer.fit(X)
+            X = svd_transformer.transform(X)
+            self._svd = svd_transformer
 
         self.n_rows_in_ = X.shape[0]
         self.n_features_in_ = X.shape[1]
