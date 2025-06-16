@@ -155,6 +155,8 @@ class Preprocessing(object):
         )
 
         if X_train is not None:
+            if isinstance(X_train, pd.Series):
+                X_train = X_train.to_frame()
             X_train.drop(cols_to_remove, axis=1, inplace=True)
         self._remove_columns = cols_to_remove
 
@@ -479,6 +481,8 @@ class Preprocessing(object):
 
         if X_validation is not None:
             # there can be catagorical columns (in CatBoost) which cant be clipped
+            if isinstance(X_validation, pd.Series):
+                X_validation = X_validation.to_frame()
             numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
             X_validation[numeric_cols] = X_validation[numeric_cols].clip(
                 lower=np.finfo(np.float32).min + 1000,
@@ -588,7 +592,6 @@ class Preprocessing(object):
                     )
 
         return pd.DataFrame({"prediction": y})
-
 
     # todo
     def to_json(self):
