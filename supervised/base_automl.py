@@ -27,7 +27,11 @@ from supervised.callbacks.total_time_constraint import TotalTimeConstraint
 from supervised.ensemble import Ensemble
 from supervised.exceptions import AutoMLException, NotTrainedException
 from supervised.model_framework import ModelFramework
-from supervised.preprocessing.transformer.exclude_missing_target import ExcludeRowsMissingTargetTransformer
+from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
+from supervised.preprocessing.transformer.exclude_missing_target import (
+    ExcludeRowsMissingTargetTransformer,
+)
+
 # disable EDA
 # from supervised.preprocessing.eda import EDA
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
@@ -109,6 +113,10 @@ class BaseAutoML(BaseEstimator, ABC):
         self._optuna_verbose = True
         self._n_jobs = -1
         self._id = str(uuid.uuid4())
+        # TODO
+        self._use_pca = False
+        self._pca_variance_threshold = 0.9
+        self._pca = None
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
@@ -366,14 +374,14 @@ class BaseAutoML(BaseEstimator, ABC):
         params["max_time_for_learner"] = max_time_for_learner
 
         # TODO
-        params["use_pca"] = self.use_pca
+        params["use_pca"] = self._use_pca
         params["_pca_variance_threshold"] = self._pca_variance_threshold
 
         total_time_constraint = TotalTimeConstraint(
             {
-                "total_time_limit": self._total_time_limit
-                if self._model_time_limit is None
-                else None,
+                "total_time_limit": (
+                    self._total_time_limit if self._model_time_limit is None else None
+                ),
                 "total_time_start": self._start_time,
                 "expected_learners_cnt": self._expected_learners_cnt(),
             }
@@ -611,9 +619,9 @@ class BaseAutoML(BaseEstimator, ABC):
         if sample_weight is not None:
             self._validation_strategy["sample_weight_path"] = self._sample_weight_path
         if sensitive_features is not None:
-            self._validation_strategy[
-                "sensitive_features_path"
-            ] = self._sensitive_features_path
+            self._validation_strategy["sensitive_features_path"] = (
+                self._sensitive_features_path
+            )
 
         if cv is not None:
             self._validation_strategy["cv_path"] = os.path.join(
@@ -659,13 +667,13 @@ class BaseAutoML(BaseEstimator, ABC):
                     X.loc[X.shape[0]] = new_X.loc[j]
                     y.loc[y.shape[0]] = classes[i]
                     if sample_weight is not None:
-                        sample_weight.loc[
-                            sample_weight.shape[0]
-                        ] = new_sample_weight.loc[j]
+                        sample_weight.loc[sample_weight.shape[0]] = (
+                            new_sample_weight.loc[j]
+                        )
                     if sensitive_features is not None:
-                        sensitive_features.loc[
-                            sensitive_features.shape[0]
-                        ] = new_sensitive_features.loc[j]
+                        sensitive_features.loc[sensitive_features.shape[0]] = (
+                            new_sensitive_features.loc[j]
+                        )
 
     def _save_data_info(self, X, y, sample_weight=None, sensitive_features=None):
         target_is_numeric = pd.api.types.is_numeric_dtype(y)
@@ -795,8 +803,27 @@ class BaseAutoML(BaseEstimator, ABC):
             elif isinstance(sensitive_features, pd.Series):
                 sensitive_features = pd.DataFrame(sensitive_features)
 
-        X, y, sample_weight, sensitive_features = ExcludeRowsMissingTargetTransformer.transform(
-            X, y, sample_weight, sensitive_features, warn=True
+        # TODO: danach wird y = None
+        print(f"y before Transformer: {y.head()}")
+        transformer = ExcludeRowsMissingTargetTransformer()
+        X, y, sample_weight, sensitive_features = (
+            transformer.transform(
+                X=X,
+                y=y,
+                sample_weight=sample_weight,
+                sensitive_features=sensitive_features,
+                warn=True,
+            )
+        )
+
+        print(
+            f"DEBUG: Type of y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {type(y)}"
+        )
+        print(
+            f"DEBUG: y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: \n{y.head() if y is not None else 'None'}"
+        )
+        print(
+            f"DEBUG: y missing values IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {y.isnull().sum() if y is not None else 'y is None!'}"
         )
 
         X.reset_index(drop=True, inplace=True)
@@ -967,15 +994,27 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def _fit(self, X, y, sample_weight=None, cv=None, sensitive_features=None):
         """Fits the AutoML model with data"""
+
         if self._fit_level == "finished":
             print(
                 "This model has already been fitted. You can use predict methods or select a new 'results_path' for a new a 'fit()'."
             )
             return
+
         # Validate input and build dataframes
         X, y, sample_weight, sensitive_features = self._build_dataframe(
             X, y, sample_weight, sensitive_features
         )
+
+        # TODO
+        # Optional: Use pca
+        if self._use_pca:
+            pca_transformer = PCATransformer(
+                variance_threshold=self._pca_variance_threshold
+            )
+            pca_transformer.fit(X)
+            X = pca_transformer.transform(X)
+            self._pca = pca_transformer
 
         self.n_rows_in_ = X.shape[0]
         self.n_features_in_ = X.shape[1]
@@ -1070,9 +1109,11 @@ class BaseAutoML(BaseEstimator, ABC):
                 y.copy(deep=False),
                 None if sample_weight is None else sample_weight.copy(deep=False),
                 cv,
-                None
-                if sensitive_features is None
-                else sensitive_features.copy(deep=False),
+                (
+                    None
+                    if sensitive_features is None
+                    else sensitive_features.copy(deep=False)
+                ),
             )
 
             tuner = MljarTuner(
@@ -1374,9 +1415,9 @@ class BaseAutoML(BaseEstimator, ABC):
 
             # save report
             ldb.insert(loc=0, column="Best model", value="")
-            ldb.loc[
-                ldb.name == self._best_model.get_name(), "Best model"
-            ] = "**the best**"
+            ldb.loc[ldb.name == self._best_model.get_name(), "Best model"] = (
+                "**the best**"
+            )
             ldb["name"] = [f"[{m}]({m}/README.md)" for m in ldb["name"].values]
 
             with open(os.path.join(self._results_path, "README.md"), "w") as fout:
@@ -1391,7 +1432,9 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def get_ensemble_models(self, ensemble_name="Ensemble"):
         try:
-            with open(os.path.join(self.results_path, ensemble_name, "ensemble.json")) as file:
+            with open(
+                os.path.join(self.results_path, ensemble_name, "ensemble.json")
+            ) as file:
                 params = json.load(file)
             return [m["model"] for m in params["selected_models"]]
         except Exception as e:
@@ -2431,7 +2474,9 @@ margin-right: auto;display: block;"/>\n\n"""
         fname = os.path.join(self._results_path, "README.md")
         body += (
             f'<div id="automl-report-main-{self._id}">\n'
-            + self._md_to_html(fname, f"automl-report-main-{self._id}", self._results_path)
+            + self._md_to_html(
+                fname, f"automl-report-main-{self._id}", self._results_path
+            )
             + "\n\n</div>\n\n"
         )
 
