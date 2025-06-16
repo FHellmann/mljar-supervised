@@ -189,7 +189,7 @@ class ModelFramework:
                         self.get_name(),
                         k_fold,
                         repeat,
-                        use_pca=self.params.get("use_pca", False),
+                        dim_reduction_method=self.params.get("dim_reduction_method", None),
                         pca_variance_threshold=self.params.get(
                             "_pca_variance_threshold", 0.95
                         ),

@@ -28,7 +28,6 @@ logger.setLevel(LOG_LEVEL)
 
 
 class AutoML(BaseAutoML):
-
     """
     Automated Machine Learning for supervised tasks (binary classification, multiclass classification, regression).
     """
@@ -84,8 +83,8 @@ class AutoML(BaseAutoML):
         verbose: int = 1,
         random_state: int = 1234,
         # TODO
-        use_pca: bool = False,
-        pca_variance_threshold = 0.95
+        dim_reduction_method: str = None,
+        pca_variance_threshold=0.95,
     ):
         """
         Initialize `AutoML` object.
@@ -404,7 +403,7 @@ class AutoML(BaseAutoML):
         self.n_jobs = n_jobs
         self.random_state = random_state
         # TODO
-        self.use_pca = use_pca
+        self.dim_reduction_method = dim_reduction_method
         self.pca_variance_threshold = pca_variance_threshold
 
     def fit(
@@ -443,12 +442,12 @@ class AutoML(BaseAutoML):
         finally:
             matplotlib.use(original_backend)
             try:
-                if 'inline' in original_backend:
+                if "inline" in original_backend:
                     import matplotlib_inline
+
                     matplotlib_inline.backend_inline._enable_matplotlib_integration()
             except:
                 pass
-
 
     def predict(self, X: Union[List, numpy.ndarray, pandas.DataFrame]) -> numpy.ndarray:
         """

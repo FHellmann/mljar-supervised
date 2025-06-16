@@ -114,7 +114,7 @@ class BaseAutoML(BaseEstimator, ABC):
         self._n_jobs = -1
         self._id = str(uuid.uuid4())
         # TODO
-        self._use_pca = False
+        self._dim_reduction_method  = None
         self._pca_variance_threshold = 0.9
         self._pca = None
 
@@ -374,7 +374,7 @@ class BaseAutoML(BaseEstimator, ABC):
         params["max_time_for_learner"] = max_time_for_learner
 
         # TODO
-        params["use_pca"] = self._use_pca
+        params["dim_reduction_method"] = self._dim_reduction_method
         params["_pca_variance_threshold"] = self._pca_variance_threshold
 
         total_time_constraint = TotalTimeConstraint(
@@ -1008,7 +1008,7 @@ class BaseAutoML(BaseEstimator, ABC):
 
         # TODO
         # Optional: Use pca
-        if self._use_pca:
+        if self._dim_reduction_method=="pca":
             pca_transformer = PCATransformer(
                 variance_threshold=self._pca_variance_threshold
             )

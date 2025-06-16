@@ -43,7 +43,7 @@ class Preprocessing(object):
         k_fold=None,
         repeat=None,
         # TODO
-        use_pca=False,
+        dim_reduction_method=None,
         pca_variance_threshold=0.95,
     ):
         self._params = preprocessing_params
@@ -71,7 +71,7 @@ class Preprocessing(object):
         self._repeat = repeat
 
         # TODO
-        self.use_pca = use_pca
+        self.dim_reduction_method = dim_reduction_method
         self._pca_variance_threshold = pca_variance_threshold
 
     def _exclude_missing_targets(self, X=None, y=None):
@@ -300,13 +300,17 @@ class Preprocessing(object):
 
         # TODO
         # PCA
-        if self.use_pca:
+        if self.dim_reduction_method == "pca":
             numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
             if numeric_cols:
-                non_numeric_cols = X_train.select_dtypes(exclude="number").columns.tolist()
+                non_numeric_cols = X_train.select_dtypes(
+                    exclude="number"
+                ).columns.tolist()
                 X_non_numeric = X_train[non_numeric_cols]
 
-                self._pca = PCATransformer(variance_threshold=self._pca_variance_threshold)
+                self._pca = PCATransformer(
+                    variance_threshold=self._pca_variance_threshold
+                )
                 self._pca.fit(X_train[numeric_cols])
                 X_numeric_pca = self._pca.transform(X_train[numeric_cols])
 
@@ -452,7 +456,11 @@ class Preprocessing(object):
                 X_validation = scale.transform(X_validation)
 
         # TODO
-        if self.use_pca and hasattr(self, "_pca") and self._pca is not None:
+        if (
+            self.dim_reduction_method == "pca"
+            and hasattr(self, "_pca")
+            and self._pca is not None
+        ):
             numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
             non_numeric_cols = X_validation.select_dtypes(
                 exclude="number"
