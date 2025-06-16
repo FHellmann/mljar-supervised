@@ -1,5 +1,6 @@
 from typing import Optional
 
+import pandas as pd
 from pandas import DataFrame
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -39,7 +40,8 @@ class PCATransformer(BaseTransformer, AttributeStorage):
         X_scaled = self._scale.transform(X[self._input_columns])
         X_pca = self._pca.transform(X_scaled)
 
-        X = X.copy()
-        X[self._new_features] = X_pca
-
-        return X
+        # X = X.copy()
+        # X[self._new_features] = X_pca
+        #
+        # return X
+        return pd.DataFrame(X_pca, columns=self._new_features, index=X.index)
