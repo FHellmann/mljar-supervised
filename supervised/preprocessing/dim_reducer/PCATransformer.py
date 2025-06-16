@@ -40,8 +40,15 @@ class PCATransformer(BaseTransformer, AttributeStorage):
         X_scaled = self._scale.transform(X[self._input_columns])
         X_pca = self._pca.transform(X_scaled)
 
-        # X = X.copy()
-        # X[self._new_features] = X_pca
-        #
-        # return X
-        return pd.DataFrame(X_pca, columns=self._new_features, index=X.index)
+        if X_pca.ndim == 1:
+            X_pca = X_pca.reshape(-1, 1)
+
+        X_transformed = X.copy()
+        for i, col in enumerate(self._new_features):
+            X_transformed[col] = X_pca[:, i]
+
+        print("transform method:", X_transformed.columns)
+
+        return X_transformed
+
+        # return pd.DataFrame(X_pca, columns=self._new_features, index=X.index)
