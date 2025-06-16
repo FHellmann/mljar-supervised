@@ -27,7 +27,8 @@ class PCATransformer(BaseTransformer, AttributeStorage):
         self._pca = PCA(n_components=self._variance_threshold)
         self._pca.fit(X_scaled)
 
-        self._new_features = [f"PC_{i+1}" for i in range(len(self._pca.n_components_))]
+        n_components = self._pca.components_.shape[0]
+        self._new_features = [f"PC_{i+1}" for i in range(n_components)]
 
     def transform(self, X: DataFrame, **kwargs) -> DataFrame:
 
