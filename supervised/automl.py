@@ -405,7 +405,7 @@ class AutoML(BaseAutoML):
         self.random_state = random_state
         # TODO
         self.use_pca = use_pca
-        self._pca_variance_threshold = pca_variance_threshold
+        self.pca_variance_threshold = pca_variance_threshold
 
     def fit(
         self,
