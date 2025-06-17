@@ -16,8 +16,16 @@ class ExcludeRowsMissingTargetTransformer(BaseTransformer):
     def fit(self, X: DataFrame, y: DataFrame = None, **kwargs) -> None:
         pass
 
-    def transform(self, X: DataFrame = None, y: DataFrame = None, sample_weight=None, sensitive_features=None,
-                  warn=False):
+    def transform(
+        self,
+        X: DataFrame = None,
+        y: DataFrame = None,
+        sample_weight=None,
+        sensitive_features=None,
+        warn=False,
+    ):
+        print(f"DEBUG (exclude_missing_target.py in transform): X data\n{X}")
+        print(f"DEBUG (exclude_missing_target.py in transform): y data\n{y}")
         if y is None:
             return X, y, sample_weight, sensitive_features
         y_missing = pd.isnull(y)
@@ -27,7 +35,7 @@ class ExcludeRowsMissingTargetTransformer(BaseTransformer):
         if warn:
             warnings.warn(
                 "There are samples with missing target values in the data which will be excluded for further analysis",
-                UserWarning
+                UserWarning,
             )
         y = y.drop(y.index[y_missing])
         y.reset_index(drop=True, inplace=True)

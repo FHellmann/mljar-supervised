@@ -103,10 +103,27 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing params: {}".format(target_preprocessing))
 
+            print(
+                f"DEBUG (preprocessing.py in fit_and_transform): X data: \n{X_train})"
+            )
+            print(f"DEBUG (preprocessing.py in fit_and_transform): y data: \n{y_train}")
+
+            # TODO
+            y_train = pd.DataFrame(y_train)
+
+            # TODO
+            missing_target_transformer = ExcludeRowsMissingTargetTransformer()
             X_train, y_train, sample_weight, _ = (
-                ExcludeRowsMissingTargetTransformer.transform(
-                    X_train, y_train, sample_weight
+                missing_target_transformer.transform(
+                    X=X_train, y=y_train, sample_weight=sample_weight
                 )
+            )
+
+            print(
+                f"DEBUG (preprocessing.py in fit_and_transform): X data after TargetTransformer: \n{X_train})"
+            )
+            print(
+                f"DEBUG (preprocessing.py in fit_and_transform): y data after TargetTransformer: \n{y_train})"
             )
 
             if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
@@ -381,12 +398,14 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing -> {}".format(target_preprocessing))
 
+            missing_target_transformer = ExcludeRowsMissingTargetTransformer()
+
             (
                 X_validation,
                 y_validation,
                 sample_weight_validation,
                 _,
-            ) = ExcludeRowsMissingTargetTransformer.transform(
+            ) = missing_target_transformer.transform(
                 X_validation, y_validation, sample_weight_validation
             )
 
@@ -490,7 +509,7 @@ class Preprocessing(object):
             if numeric_cols:
                 X_non_numeric = X_validation[non_numeric_cols]
 
-                if self.dim_reduction_method=="pca":
+                if self.dim_reduction_method == "pca":
                     X_numeric_pca = self._pca.transform(X_validation[numeric_cols])
                     X_validation = pd.concat(
                         [
@@ -499,7 +518,7 @@ class Preprocessing(object):
                         ],
                         axis=1,
                     )
-                elif self.dim_reduction_method=="svd":
+                elif self.dim_reduction_method == "svd":
                     X_numeric_svd = self._svd.transform(X_validation[numeric_cols])
                     X_validation = pd.concat(
                         [

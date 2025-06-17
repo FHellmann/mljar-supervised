@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+
 from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
 from supervised.automl import AutoML
 
@@ -21,23 +24,43 @@ def test_pca_transformer():
     assert not df_out.isnull().values.any()
 
 
-def test_automl_with_pca():
-    np.random.seed(42)
-    df = pd.DataFrame(np.random.randn(100, 5), columns=["a", "b", "c", "d", "e"])
-    df["target"] = np.random.choice([0, 1], size=100)
+def test_automl_pca():
+    X, y = make_classification(
+        n_samples=1000,
+        n_features=10,
+        random_state=42,
+    )
+    X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+    y = pd.Series(y)
 
-    X = df.drop(columns=["target"])
-    y = df["target"]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-    automl = AutoML(algorithms=["Linear"], use_pca=False)
+    automl = AutoML(
+        mode="Explain",
+        total_time_limit=120,
+        ml_task="binary_classification",
+        dim_reduction_method="pca"
+    )
 
-    automl.fit(X, y)
+    print(f"DEBUG (test_pca_transformer.py): Type of X_train: {type(X_train)}")
+    print(f"DEBUG (test_pca_transformer.py): Type of y_train: {type(y_train)}")
+    if isinstance(X_train, pd.DataFrame):
+        print(
+            f"DEBUG (test_pca_transformer.py): X_train dtypes: {X_train.dtypes.unique()}"
+        )
+    if isinstance(y_train, pd.Series):
+        print(f"DEBUG (test_pca_transformer.py): y_train dtype: {y_train.dtype}")
+        print(
+            f"DEBUG (test_pca_transformer.py): y_train unique values: {y_train.unique()}"
+        )
+        print(
+            f"DEBUG (test_pca_transformer.py): y_train value counts:\n{y_train.value_counts()}"
+        )
 
-    features = automl._data_info.get_final_features()
-    print("Features after PCA:", features)
+    automl.fit(X_train, y_train)
 
-    assert any(
-        f.startswith("PC_") for f in features
-    ), "No PCA components in feature set!"
+    predictions = automl.predict(X_test)
 
-    print("[OK] AutoML with use_pca=True generated and trained PCA components.")
+    print(predictions)

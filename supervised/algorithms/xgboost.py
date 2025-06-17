@@ -169,19 +169,21 @@ class XgbAlgorithm(BaseAlgorithm):
             missing=np.NaN,
             weight=sample_weight,
         )
-        
-        if X_validation is not None and y_validation is not None:       
+
+        if X_validation is not None and y_validation is not None:
             dvalidation = xgb.DMatrix(
-                X_validation.values
-                if isinstance(X_validation, pd.DataFrame)
-                else X_validation,
+                (
+                    X_validation.values
+                    if isinstance(X_validation, pd.DataFrame)
+                    else X_validation
+                ),
                 label=y_validation,
                 missing=np.NaN,
                 weight=sample_weight_validation,
             )
         else:
             dvalidation = None
-            
+
         evals_result = {}
 
         evals = []
@@ -198,6 +200,8 @@ class XgbAlgorithm(BaseAlgorithm):
         if self.custom_eval_metric is not None:
             del self.learner_params["eval_metric"]
 
+        print(f"DEBUG (xgboost.py in fit): X is None: {X is None}, y is None: {y is None}")
+
         self.model = xgb.train(
             self.learner_params,
             dtrain,
@@ -206,7 +210,7 @@ class XgbAlgorithm(BaseAlgorithm):
             early_stopping_rounds=esr,
             evals_result=evals_result,
             verbose_eval=False,
-            custom_metric=self.custom_eval_metric
+            custom_metric=self.custom_eval_metric,
             # callbacks=[time_constraint] # callback slows down by factor ~8
         )
 

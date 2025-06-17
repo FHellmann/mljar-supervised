@@ -177,9 +177,15 @@ class ModelFramework:
                         validation_data["y"].shape,
                     )
                 )
+                print(
+                    f"DEBUG (ModelFramework.py in train): X data: \n{train_data['X']}"
+                )
+                print(
+                    f"DEBUG (ModelFramework.py in train): y data: \n{train_data['y']}"
+                )
+
                 if "sample_weight" in train_data:
                     logger.debug("Sample weight available during the training.")
-
 
                 # TODO
                 # the proprocessing is done at every validation step
@@ -189,27 +195,42 @@ class ModelFramework:
                         self.get_name(),
                         k_fold,
                         repeat,
-                        dim_reduction_method=self.params.get("dim_reduction_method", None),
+                        dim_reduction_method=self.params.get(
+                            "dim_reduction_method", None
+                        ),
                         pca_variance_threshold=self.params.get(
-                            "_pca_variance_threshold", 0.95
+                            "_pca_variance_threshold", 0.9
                         ),
                         svd_components=self.params.get("svd_components", 2),
                     )
                 ]
 
+                # TODO: hier ist der FEHLER!
+                # y-Daten werden an X gegebene
+                # y wird None
                 X_train, y_train, sample_weight = self.preprocessings[
                     -1
                 ].fit_and_transform(
-                    train_data["X"], train_data["y"], train_data.get("sample_weight")
+                    X_train=train_data["X"],
+                    y_train=train_data["y"],
+                    sample_weight=train_data.get("sample_weight"),
                 )
+
+                print(
+                    f"DEBUG (ModelFramework.py in train): X data after preprocessing: \n{X_train}"
+                )
+                print(
+                    f"DEBUG (ModelFramework.py in train): y data after preprocessing: \n{y_train}"
+                )
+
                 (
                     X_validation,
                     y_validation,
                     sample_weight_validation,
                 ) = self.preprocessings[-1].transform(
-                    validation_data["X"],
-                    validation_data["y"],
-                    validation_data.get("sample_weight"),
+                    X_validation=validation_data["X"],
+                    y_validation=validation_data["y"],
+                    sample_weight_validation=validation_data.get("sample_weight"),
                 )
 
                 # skip preprocessing for sensitive features

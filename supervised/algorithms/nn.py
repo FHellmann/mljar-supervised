@@ -46,6 +46,9 @@ class NNFit(SklearnAlgorithm):
             warnings.simplefilter(action="ignore")
             # filter
             # X does not have valid feature names, but MLPClassifier was fitted with feature names
+            print(
+                f"DEBUG (nn.py in fit): X is None: {X is None}, y is None: {y is None}"
+            )
             self.model.fit(X, y)
 
         if log_to_file is not None:

@@ -146,6 +146,8 @@ class BaseAutoML(BaseEstimator, ABC):
             with open(os.path.join(path, "params.json")) as file:
                 params = json.load(file)
 
+            print(f"DEBUG (base_automl.py in load): Loaded AutoML models {params}")
+
             self._model_subpaths = params["saved"]
             self._mode = params.get("mode", self._mode)
             self._ml_task = params.get("ml_task", self._ml_task)
@@ -347,6 +349,9 @@ class BaseAutoML(BaseEstimator, ABC):
         return 1
 
     def train_model(self, params):
+
+        print(f"DEBUG (base_automl.py in train_model): X data: \n{self._X}")
+        print(f"DEBUG (base_automl.py in train_model): y data: \n{self._y} ")
         # do we have enough time to train?
         # if not, skip
         if not self._time_ctrl.enough_time(
@@ -357,6 +362,7 @@ class BaseAutoML(BaseEstimator, ABC):
         # let's create directory to log all training artifacts
         results_path, model_subpath = self._results_path, params["name"]
         model_path = os.path.join(results_path, model_subpath)
+        print(f"DEBUG (base_automl.py in train_model): Model subpath: {model_subpath}")
         self.create_dir(model_path)
 
         # prepare callbacks
@@ -377,6 +383,10 @@ class BaseAutoML(BaseEstimator, ABC):
         params["max_time_for_learner"] = max_time_for_learner
 
         # TODO
+        if self._dim_reduction_method:
+            print(
+                f"DEBUG (base_automl.py in train_model): Dim reduction method: {self._dim_reduction_method}"
+            )
         params["dim_reduction_method"] = self._dim_reduction_method
         params["_pca_variance_threshold"] = self._pca_variance_threshold
         params["_svd_components"] = self._svd_components
@@ -397,11 +407,19 @@ class BaseAutoML(BaseEstimator, ABC):
             callbacks=[early_stop, total_time_constraint],
         )
 
+        print(f"DEBUG (base_automl.py in train_model): Model framework: {mf}")
+
         # start training
         logger.info(
             f"Train model #{len(self._models)+1} / Model name: {params['name']}"
         )
+        print(
+            f"DEBUG (base_automl.py in train_model): About to call mf.train(). Model subpath: {model_subpath}"
+        )
         mf.train(results_path, model_subpath)
+        print(
+            f"DEBUG (base_automl.py in train_model): mf.train() completed for {model_subpath}"
+        )
 
         # keep info about the model
         self.keep_model(mf, model_subpath)
@@ -807,8 +825,10 @@ class BaseAutoML(BaseEstimator, ABC):
             elif isinstance(sensitive_features, pd.Series):
                 sensitive_features = pd.DataFrame(sensitive_features)
 
-        # TODO: danach wird y = None
-        print(f"y before Transformer: {y.head()}")
+        # TODO
+        print(
+            f"DEBUG (base_automl.py in _build_dataframe): First rows of y before Transformer:\n {y.head()}"
+        )
         transformer = ExcludeRowsMissingTargetTransformer()
         X, y, sample_weight, sensitive_features = transformer.transform(
             X=X,
@@ -819,13 +839,13 @@ class BaseAutoML(BaseEstimator, ABC):
         )
 
         print(
-            f"DEBUG: Type of y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {type(y)}"
+            f"DEBUG (base_automl.py in _build_dataframe): Type of y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {type(y)}"
         )
         print(
-            f"DEBUG: y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: \n{y.head() if y is not None else 'None'}"
+            f"DEBUG (base_automl.py in _build_dataframe): y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: \n{y.head() if y is not None else 'None'}"
         )
         print(
-            f"DEBUG: y missing values IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {y.isnull().sum() if y is not None else 'y is None!'}"
+            f"DEBUG (base_automl.py in _build_dataframe): y missing values IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {y.isnull().sum() if y is not None else 'y is None!'}"
         )
 
         X.reset_index(drop=True, inplace=True)
@@ -1007,6 +1027,14 @@ class BaseAutoML(BaseEstimator, ABC):
         X, y, sample_weight, sensitive_features = self._build_dataframe(
             X, y, sample_weight, sensitive_features
         )
+
+        # TODO
+        # Store X and y for debugging
+        self._X = X
+        self._y = y
+
+        print(f"DEBUG (base_automl.py in _fit): X data \n {X.head()}")
+        print(f"DEBUG (base_automl.py in _fit): y data \n {y}")
 
         # TODO
         # Optional: Use dim reduction method
@@ -1234,7 +1262,20 @@ class BaseAutoML(BaseEstimator, ABC):
                                 is_stacked=params["is_stacked"]
                             )
                         else:
+                            print(
+                                f"DEBUG (base_automl.py in _fit): Calling train_model. All params: {self._all_params}"
+                            )
+                            print(
+                                f"DEBUG (base_automl.py in _fit): X data before train_model method: \n{X}"
+                            )
+                            print(
+                                f"DEBUG (base_automl.py in _fit): y data before train_model method: \n{y}"
+                            )
                             trained = self.train_model(params)
+
+                            print(
+                                f"DEBUG (base_automl.py in _fit): train_model returned. Trained model info: {trained}"
+                            )
                         params["status"] = "trained" if trained else "skipped"
                         params["final_loss"] = self._models[-1].get_final_loss()
                         params["train_time"] = self._models[-1].get_train_time()
@@ -2536,7 +2577,9 @@ margin-right: auto;display: block;"/>\n\n"""
     def _need_retrain(self, X, y, sample_weight, decrease):
         metric = self._best_model.get_metric()
 
-        X, y, sample_weight, _ = ExcludeRowsMissingTargetTransformer.transform(
+        missing_target_transformer = ExcludeRowsMissingTargetTransformer()
+
+        X, y, sample_weight, _ = missing_target_transformer.transform(
             X, y, sample_weight, warn=True
         )
 
