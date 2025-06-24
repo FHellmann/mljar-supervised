@@ -34,19 +34,6 @@ class SklearnAlgorithm(BaseAlgorithm):
         log_to_file=None,
         max_time=None,
     ):
-        print(f"DEBUG (sklearn.py in fit): X is None: {X is None}, y is None: {y is None}")
-        if y is not None:
-            if isinstance(y, (pd.Series, np.ndarray)):
-                print(
-                    f"DEBUG (sklearn.py in fit): y content (first 5 samples): {y[:5]}"
-                )
-                print(
-                    f"DEBUG (sklearn.py in fit): y unique values and counts: {np.unique(y, return_counts=True)}"
-                )
-            else:
-                print(
-                    f"DEBUG (sklearn.py in fit): y type is not Series/ndarray: {type(y)}"
-                )
         with warnings.catch_warnings():
             warnings.simplefilter(action="ignore")
             self.model.fit(X, y, sample_weight=sample_weight)

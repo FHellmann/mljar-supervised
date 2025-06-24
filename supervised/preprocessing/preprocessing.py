@@ -43,8 +43,8 @@ class Preprocessing(object):
         model_name=None,
         k_fold=None,
         repeat=None,
-        # TODO
-        dim_reduction_method=None,
+        # TODO: change to None later
+        dim_reduction_method="pca",
         pca_variance_threshold=0.95,
         svd_components=2,
     ):
@@ -73,11 +73,14 @@ class Preprocessing(object):
         self._repeat = repeat
 
         # TODO
-        self.dim_reduction_method = dim_reduction_method
-        self._pca = None
-        self._svd = None
-        self._pca_variance_threshold = pca_variance_threshold
-        self._svd_components = svd_components
+        self._dim_reduction_method = self._params.get(
+            "dim_reduction_method", dim_reduction_method
+        )
+        self._dim_reducer = None
+        self._pca_variance_threshold = self._params.get(
+            "pca_variance_threshold", pca_variance_threshold
+        )
+        self._svd_components = self._params.get("svd_components", svd_components)
 
     def _exclude_missing_targets(self, X=None, y=None):
         # check if there are missing values in target column
@@ -103,27 +106,13 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing params: {}".format(target_preprocessing))
 
-            print(
-                f"DEBUG (preprocessing.py in fit_and_transform): X data: \n{X_train})"
-            )
-            print(f"DEBUG (preprocessing.py in fit_and_transform): y data: \n{y_train}")
-
             # TODO
             y_train = pd.DataFrame(y_train)
 
             # TODO
             missing_target_transformer = ExcludeRowsMissingTargetTransformer()
-            X_train, y_train, sample_weight, _ = (
-                missing_target_transformer.transform(
-                    X=X_train, y=y_train, sample_weight=sample_weight
-                )
-            )
-
-            print(
-                f"DEBUG (preprocessing.py in fit_and_transform): X data after TargetTransformer: \n{X_train})"
-            )
-            print(
-                f"DEBUG (preprocessing.py in fit_and_transform): y data after TargetTransformer: \n{y_train})"
+            X_train, y_train, sample_weight, _ = missing_target_transformer.transform(
+                X=X_train, y=y_train, sample_weight=sample_weight
             )
 
             if CategoricalTransformer.CONVERT_INTEGER in target_preprocessing:
@@ -321,34 +310,47 @@ class Preprocessing(object):
                 self._scale += [scale]
 
         # TODO
+        print(
+            "DEBUG preprocessing.py; fit_and_transform: X_train data wird mit folgenden Spalten übergeben: ",
+            X_train.columns,
+        )
         # Dim reduction
-        if self.dim_reduction_method is not None:
+        if self._dim_reduction_method is not None:
+            print(
+                f"DEBUG (preprocessing.py in fit_and_transform): Usage of dim reduction method: {self._dim_reduction_method}"
+            )
             numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
+            print(
+                "DEBUG (preprocessing.py in fit_and_transform): Numeric columns: ",
+                numeric_cols,
+            )
             if numeric_cols:
+
                 non_numeric_cols = X_train.select_dtypes(
                     exclude="number"
                 ).columns.tolist()
                 X_non_numeric = X_train[non_numeric_cols]
 
-                if self.dim_reduction_method == "pca":
-                    self._pca = PCATransformer(
+                if self._dim_reduction_method == "pca":
+                    print(
+                        f"DEBUG (preprocessing.py in fit_and_transform): Usage of PCA with train data: {X_train.head()}"
+                    )
+                    self._dim_reducer = PCATransformer(
                         variance_threshold=self._pca_variance_threshold
                     )
-                    self._pca.fit(X_train[numeric_cols])
-                    X_numeric_pca = self._pca.transform(X_train[numeric_cols])
+                    self._dim_reducer.fit(X_train[numeric_cols])
+                    X_train = self._dim_reducer.transform(X_train[numeric_cols])
 
-                    X_train = pd.concat(
-                        [
-                            X_non_numeric.reset_index(drop=True),
-                            X_numeric_pca.reset_index(drop=True),
-                        ],
-                        axis=1,
+                    print(
+                        f"DEBUG (preprocessing.py in fit_and_transform): X train data after PCA:\n {X_train}"
                     )
 
-                elif self.dim_reduction_method == "svd":
-                    self._svd = SVDTransformer(n_components=self._svd_components)
-                    self._svd.fit(X_train[numeric_cols])
-                    X_numeric_svd = self._svd.transform(X_train[numeric_cols])
+                elif self._dim_reduction_method == "svd":
+                    self._dim_reducer = SVDTransformer(
+                        n_components=self._svd_components
+                    )
+                    self._dim_reducer.fit(X_train[numeric_cols])
+                    X_numeric_svd = self._dim_reducer.transform(X_train[numeric_cols])
 
                     X_train = pd.concat(
                         [
@@ -495,11 +497,8 @@ class Preprocessing(object):
 
         # TODO
         if (
-            self.dim_reduction_method in ["pca", "svd"]
-            and hasattr(self, "_pca")
-            or hasattr(self, "_svd")
-            and self._pca is not None
-            or self._svd is not None
+            self._dim_reduction_method in ["pca", "svd"]
+            and self._dim_reducer is not None
         ):
             numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
             non_numeric_cols = X_validation.select_dtypes(
@@ -509,8 +508,10 @@ class Preprocessing(object):
             if numeric_cols:
                 X_non_numeric = X_validation[non_numeric_cols]
 
-                if self.dim_reduction_method == "pca":
-                    X_numeric_pca = self._pca.transform(X_validation[numeric_cols])
+                if self._dim_reduction_method == "pca":
+                    X_numeric_pca = self._dim_reducer.transform(
+                        X_validation[numeric_cols]
+                    )
                     X_validation = pd.concat(
                         [
                             X_non_numeric.reset_index(drop=True),
@@ -518,8 +519,10 @@ class Preprocessing(object):
                         ],
                         axis=1,
                     )
-                elif self.dim_reduction_method == "svd":
-                    X_numeric_svd = self._svd.transform(X_validation[numeric_cols])
+                elif self._dim_reduction_method == "svd":
+                    X_numeric_svd = self._dim_reducer.transform(
+                        X_validation[numeric_cols]
+                    )
                     X_validation = pd.concat(
                         [
                             X_non_numeric.reset_index(drop=True),
@@ -717,6 +720,9 @@ class Preprocessing(object):
 
     def from_json(self, data_json, results_path):
         self._params = data_json.get("params", self._params)
+        print(
+            "DEBUG (preprocessing.py; from_json): Parameters from json = ", self._params
+        )
 
         if "remove_columns" in data_json:
             self._remove_columns = data_json.get("remove_columns", [])

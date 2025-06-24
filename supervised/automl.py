@@ -83,9 +83,9 @@ class AutoML(BaseAutoML):
         verbose: int = 1,
         random_state: int = 1234,
         # TODO
-        dim_reduction_method: str = None,
-        pca_variance_threshold=0.95,
-        svd_components=2
+        dim_reduction_method: Literal["pca", "svc", None] = None,
+        pca_variance_threshold=0.9,
+        svd_components=2,
     ):
         """
         Initialize `AutoML` object.
@@ -406,7 +406,7 @@ class AutoML(BaseAutoML):
         # TODO
         self.dim_reduction_method = dim_reduction_method
         self.pca_variance_threshold = pca_variance_threshold
-        self.svd_copomnents = svd_components
+        self.svd_components = svd_components
 
     def fit(
         self,
@@ -435,6 +435,7 @@ class AutoML(BaseAutoML):
         Returns:
             AutoML object: Returns `self`
         """
+        print("DEBUG (automl.py): Calling fit method ...")
         try:
             original_backend = matplotlib.get_backend()
             matplotlib.use("Agg")
@@ -468,6 +469,7 @@ class AutoML(BaseAutoML):
         Raises:
             AutoMLException: Model has not yet been fitted.
         """
+        print("DEBUG (automl.py): Calling predict method ...")
         return self._predict(X)
 
     def predict_proba(
@@ -489,6 +491,7 @@ class AutoML(BaseAutoML):
             AutoMLException: Model has not yet been fitted.
 
         """
+        print("DEBUG (automl.py): Calling predict_proba method ...")
         return self._predict_proba(X)
 
     def predict_all(

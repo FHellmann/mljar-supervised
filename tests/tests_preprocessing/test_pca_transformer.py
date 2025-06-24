@@ -41,23 +41,8 @@ def test_automl_pca():
         mode="Explain",
         total_time_limit=120,
         ml_task="binary_classification",
-        dim_reduction_method="pca"
+        dim_reduction_method="pca",
     )
-
-    print(f"DEBUG (test_pca_transformer.py): Type of X_train: {type(X_train)}")
-    print(f"DEBUG (test_pca_transformer.py): Type of y_train: {type(y_train)}")
-    if isinstance(X_train, pd.DataFrame):
-        print(
-            f"DEBUG (test_pca_transformer.py): X_train dtypes: {X_train.dtypes.unique()}"
-        )
-    if isinstance(y_train, pd.Series):
-        print(f"DEBUG (test_pca_transformer.py): y_train dtype: {y_train.dtype}")
-        print(
-            f"DEBUG (test_pca_transformer.py): y_train unique values: {y_train.unique()}"
-        )
-        print(
-            f"DEBUG (test_pca_transformer.py): y_train value counts:\n{y_train.value_counts()}"
-        )
 
     automl.fit(X_train, y_train)
 

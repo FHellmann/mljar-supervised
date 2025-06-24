@@ -54,6 +54,11 @@ class ModelFramework:
         self.validation_params = params.get("validation_strategy")
         self.learner_params = params.get("learner")
 
+        print(
+            "DEBUG (model_framework.py; init): Preprocessing Parameter: ",
+            self.preprocessing_params,
+        )
+
         self._ml_task = params.get("ml_task")
         self._explain_level = params.get("explain_level")
         self._is_stacked = params.get("is_stacked", False)
@@ -84,6 +89,17 @@ class ModelFramework:
 
         # the automl random state from AutoML constructor, used in Optuna optimizer
         self._automl_random_state = params.get("automl_random_state", 42)
+
+        # Dim reduction methods
+        self._dim_reduction_method = params.get("dim_reduction_method", "pca")
+        self._pca_variance_threshold = params.get("pca_variance_threshold", 0.9)
+        self._svd_components = params.get("svd_components", 2)
+        self._dim_reducer = None
+
+        print(
+            "DEBUG (model_framework.py; init): Dim reduction method: ",
+            self._dim_reduction_method,
+        )
 
     def get_train_time(self):
         return self.train_time
@@ -177,16 +193,14 @@ class ModelFramework:
                         validation_data["y"].shape,
                     )
                 )
-                print(
-                    f"DEBUG (ModelFramework.py in train): X data: \n{train_data['X']}"
-                )
-                print(
-                    f"DEBUG (ModelFramework.py in train): y data: \n{train_data['y']}"
-                )
 
                 if "sample_weight" in train_data:
                     logger.debug("Sample weight available during the training.")
 
+                print(
+                    "DEBUG (model_framework.py; train) Parameter: ",
+                    self.params.get("dim_reduction_method"),
+                )
                 # TODO
                 # the proprocessing is done at every validation step
                 self.preprocessings += [
@@ -196,31 +210,21 @@ class ModelFramework:
                         k_fold,
                         repeat,
                         dim_reduction_method=self.params.get(
-                            "dim_reduction_method", None
+                            "dim_reduction_method", "pca"
                         ),
                         pca_variance_threshold=self.params.get(
-                            "_pca_variance_threshold", 0.9
+                            "pca_variance_threshold", 0.9
                         ),
                         svd_components=self.params.get("svd_components", 2),
                     )
                 ]
 
-                # TODO: hier ist der FEHLER!
-                # y-Daten werden an X gegebene
-                # y wird None
                 X_train, y_train, sample_weight = self.preprocessings[
                     -1
                 ].fit_and_transform(
                     X_train=train_data["X"],
                     y_train=train_data["y"],
                     sample_weight=train_data.get("sample_weight"),
-                )
-
-                print(
-                    f"DEBUG (ModelFramework.py in train): X data after preprocessing: \n{X_train}"
-                )
-                print(
-                    f"DEBUG (ModelFramework.py in train): y data after preprocessing: \n{y_train}"
                 )
 
                 (

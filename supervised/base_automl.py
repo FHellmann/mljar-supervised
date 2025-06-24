@@ -115,11 +115,10 @@ class BaseAutoML(BaseEstimator, ABC):
         self._n_jobs = -1
         self._id = str(uuid.uuid4())
         # TODO
-        self._dim_reduction_method = None
+        self._dim_reduction_method = "pca"
         self._pca_variance_threshold = 0.9
         self._svd_components = 2
-        self._pca = None
-        self._svd = None
+        self._dim_reducer = None
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
@@ -189,6 +188,21 @@ class BaseAutoML(BaseEstimator, ABC):
             self._n_jobs = params.get("n_jobs", self._n_jobs)
             self._random_state = params.get("random_state", self._random_state)
             stacked_models = params.get("stacked")
+
+            # Dim reduction
+            self._dim_reduction_method = params.get(
+                "dim_reduction_method", self._dim_reduction_method
+            )
+            self._pca_variance_threshold = params.get(
+                "pca_variance_threshold", self._pca_variance_threshold
+            )
+            self._dim_reducer = params.get("dim_reducer", self._dim_reducer)
+            self._svd_components = params.get("svd_components", self._svd_components)
+
+            print(
+                "DEBUG (base_automl.py; load): Dim reduce method: ",
+                self._dim_reduction_method,
+            )
 
             best_model_name = params.get("best_model")
             load_on_predict = params.get("load_on_predict")
@@ -350,8 +364,6 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def train_model(self, params):
 
-        print(f"DEBUG (base_automl.py in train_model): X data: \n{self._X}")
-        print(f"DEBUG (base_automl.py in train_model): y data: \n{self._y} ")
         # do we have enough time to train?
         # if not, skip
         if not self._time_ctrl.enough_time(
@@ -362,7 +374,6 @@ class BaseAutoML(BaseEstimator, ABC):
         # let's create directory to log all training artifacts
         results_path, model_subpath = self._results_path, params["name"]
         model_path = os.path.join(results_path, model_subpath)
-        print(f"DEBUG (base_automl.py in train_model): Model subpath: {model_subpath}")
         self.create_dir(model_path)
 
         # prepare callbacks
@@ -388,8 +399,8 @@ class BaseAutoML(BaseEstimator, ABC):
                 f"DEBUG (base_automl.py in train_model): Dim reduction method: {self._dim_reduction_method}"
             )
         params["dim_reduction_method"] = self._dim_reduction_method
-        params["_pca_variance_threshold"] = self._pca_variance_threshold
-        params["_svd_components"] = self._svd_components
+        params["pca_variance_threshold"] = self._pca_variance_threshold
+        params["svd_components"] = self._svd_components
 
         total_time_constraint = TotalTimeConstraint(
             {
@@ -407,19 +418,11 @@ class BaseAutoML(BaseEstimator, ABC):
             callbacks=[early_stop, total_time_constraint],
         )
 
-        print(f"DEBUG (base_automl.py in train_model): Model framework: {mf}")
-
         # start training
         logger.info(
             f"Train model #{len(self._models)+1} / Model name: {params['name']}"
         )
-        print(
-            f"DEBUG (base_automl.py in train_model): About to call mf.train(). Model subpath: {model_subpath}"
-        )
         mf.train(results_path, model_subpath)
-        print(
-            f"DEBUG (base_automl.py in train_model): mf.train() completed for {model_subpath}"
-        )
 
         # keep info about the model
         self.keep_model(mf, model_subpath)
@@ -602,6 +605,7 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def _save_data(self, X, y, sample_weight=None, cv=None, sensitive_features=None):
         # save information about original data
+
         self._save_data_info(X, y, sample_weight, sensitive_features)
 
         # handle drastic imbalance
@@ -728,6 +732,8 @@ class BaseAutoML(BaseEstimator, ABC):
         with open(data_info_path, "w") as fout:
             fout.write(json.dumps(self._data_info, indent=4, cls=MLJSONEncoder))
 
+        print("DEBUG (base_automl.py; _save_data_info): Data info = ", self._data_info)
+
     def save_progress(self, step=None, generated_params=None):
         if step is not None and generated_params is not None:
             self._all_params[step] = generated_params
@@ -826,9 +832,6 @@ class BaseAutoML(BaseEstimator, ABC):
                 sensitive_features = pd.DataFrame(sensitive_features)
 
         # TODO
-        print(
-            f"DEBUG (base_automl.py in _build_dataframe): First rows of y before Transformer:\n {y.head()}"
-        )
         transformer = ExcludeRowsMissingTargetTransformer()
         X, y, sample_weight, sensitive_features = transformer.transform(
             X=X,
@@ -836,16 +839,6 @@ class BaseAutoML(BaseEstimator, ABC):
             sample_weight=sample_weight,
             sensitive_features=sensitive_features,
             warn=True,
-        )
-
-        print(
-            f"DEBUG (base_automl.py in _build_dataframe): Type of y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {type(y)}"
-        )
-        print(
-            f"DEBUG (base_automl.py in _build_dataframe): y IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: \n{y.head() if y is not None else 'None'}"
-        )
-        print(
-            f"DEBUG (base_automl.py in _build_dataframe): y missing values IMMEDIATELY AFTER ExcludeRowsMissingTargetTransformer call: {y.isnull().sum() if y is not None else 'y is None!'}"
         )
 
         X.reset_index(drop=True, inplace=True)
@@ -1028,13 +1021,9 @@ class BaseAutoML(BaseEstimator, ABC):
             X, y, sample_weight, sensitive_features
         )
 
-        # TODO
-        # Store X and y for debugging
-        self._X = X
-        self._y = y
-
-        print(f"DEBUG (base_automl.py in _fit): X data \n {X.head()}")
-        print(f"DEBUG (base_automl.py in _fit): y data \n {y}")
+        print(
+            f"DEBUG (base_automl.py; _fit): X nachdem _build_dataframe aufgerufen wurde = {X.head()}"
+        )
 
         # TODO
         # Optional: Use dim reduction method
@@ -1043,15 +1032,15 @@ class BaseAutoML(BaseEstimator, ABC):
                 variance_threshold=self._pca_variance_threshold
             )
             pca_transformer.fit(X)
-            X = pca_transformer.transform(X)
-            self._pca = pca_transformer
+            X_pca = pca_transformer.transform(X)
+            self._dim_reducer = pca_transformer
         if self._dim_reduction_method == "svd":
             svd_transformer = SVDTransformer(
                 n_components=self._svd_components,
             )
             svd_transformer.fit(X)
-            X = svd_transformer.transform(X)
-            self._svd = svd_transformer
+            X_svd = svd_transformer.transform(X)
+            self._dim_reducer = svd_transformer
 
         self.n_rows_in_ = X.shape[0]
         self.n_features_in_ = X.shape[1]
@@ -1129,6 +1118,10 @@ class BaseAutoML(BaseEstimator, ABC):
             if self._train_ensemble:
                 self.verbose_print("AutoML will ensemble available models")
 
+            self.verbose_print(
+                f"AutoML will use dimension reduction method: {self._dim_reducer}"
+            )
+
             self._start_time = time.time()
             if self._time_ctrl is not None:
                 self._start_time -= self._time_ctrl.already_spend()
@@ -1140,6 +1133,12 @@ class BaseAutoML(BaseEstimator, ABC):
             #     EDA.compute(X, y, os.path.join(self._results_path, "EDA"))
 
             # Save data
+
+            # TODO
+            if self._dim_reduction_method=="pca":
+                X = X_pca
+            elif self._dim_reduction_method=="svd":
+                X = X_svd
 
             self._save_data(
                 X.copy(deep=False),
@@ -1264,12 +1263,6 @@ class BaseAutoML(BaseEstimator, ABC):
                         else:
                             print(
                                 f"DEBUG (base_automl.py in _fit): Calling train_model. All params: {self._all_params}"
-                            )
-                            print(
-                                f"DEBUG (base_automl.py in _fit): X data before train_model method: \n{X}"
-                            )
-                            print(
-                                f"DEBUG (base_automl.py in _fit): y data before train_model method: \n{y}"
                             )
                             trained = self.train_model(params)
 
@@ -1543,13 +1536,28 @@ class BaseAutoML(BaseEstimator, ABC):
                 "This model has not been fitted yet. Please call `fit()` first."
             )
 
+        print(
+            "DEBUG (base_automl.py; _base_predict) Dim reduction: ",
+            self._dim_reduction_method,
+        )
+        print(f"DEBUG (base_automl.py; _base_predict) X before PCA: , {X.shape}")
+        # TODO
+        if self._dim_reduction_method == "pca":
+            X = self._dim_reducer.transform(X)
+        if self._dim_reduction_method == "svd":
+            X = self._dim_reducer.transform(X)
+
+
+        print(f"DEBUG (base_automl.py; _base_predict) X after PCA: , {X.shape}")
+
         X = self._build_dataframe(X)
         if not isinstance(X.columns[0], str):
             X.columns = [str(c) for c in X.columns]
 
         input_columns = X.columns.tolist()
+        print("DEBUG (base_automl; _base_predict): X input columns = ", input_columns)
         for column in self._data_info["columns"]:
-            if column not in input_columns:
+            if column not in input_columns and self._dim_reduction_method is not None:
                 raise AutoMLException(
                     f"Missing column: {column} in input data. Cannot predict"
                 )
