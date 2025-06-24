@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 
 from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
@@ -73,3 +74,20 @@ class MissingValuesTransformer(BaseTransformer, AttributeSerializer):
     def _make_sure_na_filled(self, X):
         self._fit_na_fill(X)
         return self._transform_na_fill(X)
+
+
+    def to_json(self) -> str:
+
+        # Using the to_dict method of AttributeSerializer
+        data_dict = self.to_dict()
+
+        for key, value in data_dict.items():
+            if isinstance(value, (np.integer, np.floating)):
+                data_dict[key] = value.item()
+            elif isinstance(value, np.ndarray):
+                data_dict[key] = value.tolist()
+        return json.dumps(data_dict)
+    @classmethod
+    def from_json(cls, json_string: str) -> "MissingValuesTransformer":
+        data_dict = json.loads(json_string)
+        return cls.create_from_dict(cls, data_dict)
