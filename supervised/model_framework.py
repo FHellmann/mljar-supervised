@@ -19,6 +19,7 @@ from supervised.algorithms.registry import (
 from supervised.callbacks.callback_list import CallbackList
 from supervised.exceptions import AutoMLException
 from supervised.preprocessing.preprocessing import Preprocessing
+from supervised.preprocessing.preprocessing_registry import PreprocessingRegistry
 from supervised.utils.additional_metrics import AdditionalMetrics
 from supervised.utils.config import LOG_LEVEL
 from supervised.utils.jsonencoder import MLJSONEncoder
@@ -90,16 +91,41 @@ class ModelFramework:
         # the automl random state from AutoML constructor, used in Optuna optimizer
         self._automl_random_state = params.get("automl_random_state", 42)
 
-        # Dim reduction methods
+        # TODO
+        # Dim reduction methods aus params lesen
         self._dim_reduction_method = params.get("dim_reduction_method", "pca")
         self._pca_variance_threshold = params.get("pca_variance_threshold", 0.9)
         self._svd_components = params.get("svd_components", 2)
         self._dim_reducer = None
 
-        print(
-            "DEBUG (model_framework.py; init): Dim reduction method: ",
-            self._dim_reduction_method,
-        )
+        # Dimensionality Reducer über Registry laden
+        if self._dim_reduction_method is not None:
+            try:
+                dim_red_class = PreprocessingRegistry.get_class(
+                    self._dim_reduction_method
+                )
+                dim_red_params = PreprocessingRegistry.get_default_params(
+                    self._dim_reduction_method
+                ).copy()
+
+                # Parameter ggf. überschreiben
+                if self._dim_reduction_method == "pca":
+                    dim_red_params["variance_threshold"] = self._pca_variance_threshold
+                elif self._dim_reduction_method == "svd":
+                    dim_red_params["n_components"] = self._svd_components
+
+                # Instanz erstellen
+                self._dim_reducer = dim_red_class(**dim_red_params)
+
+                print(
+                    f"DEBUG (model_framework.py; init): Dim reducer initialized: {self._dim_reducer}"
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Error initializing dim reducer '{self._dim_reduction_method}': {str(e)}"
+                )
+                self._dim_reducer = None
 
     def get_train_time(self):
         return self.train_time
@@ -202,20 +228,20 @@ class ModelFramework:
                     self.params.get("dim_reduction_method"),
                 )
                 # TODO
-                # the proprocessing is done at every validation step
+                # the preprocessing is done at every validation step
                 self.preprocessings += [
                     Preprocessing(
                         self.preprocessing_params,
                         self.get_name(),
                         k_fold,
                         repeat,
-                        dim_reduction_method=self.params.get(
-                            "dim_reduction_method", "pca"
-                        ),
-                        pca_variance_threshold=self.params.get(
-                            "pca_variance_threshold", 0.9
-                        ),
-                        svd_components=self.params.get("svd_components", 2),
+                        # dim_reduction_method=self.params.get(
+                        #     "dim_reduction_method", "pca"
+                        # ),
+                        # pca_variance_threshold=self.params.get(
+                        #     "pca_variance_threshold", 0.9
+                        # ),
+                        # svd_components=self.params.get("svd_components", 2),
                     )
                 ]
 
@@ -644,6 +670,21 @@ class ModelFramework:
 
         saved = [os.path.join(model_subpath, l.get_fname()) for l in self.learners]
 
+        # TODO: speichern von dim_reducer (= trainiertes pca oder svd objekt)
+        print(
+            f"DEBUG (model_framework.py; save) Dim reducer und method: {self._dim_reducer}, {self._dim_reduction_method}"
+        )
+        dim_reducer_filename = None
+        if hasattr(self, "_dim_reducer") and self._dim_reducer is not None:
+            print(
+                "DEBUG (model_framework.py; save): Store dim reducer ",
+                self._dim_reducer,
+            )
+            dim_reducer_filename = "dim_reducer.joblib"
+            dim_reducer_full_path = os.path.join(model_path, dim_reducer_filename)
+            joblib.dump(self._dim_reducer, dim_reducer_full_path)
+            logger.info(f"Dim reducer saved to {dim_reducer_full_path}")
+
         with open(os.path.join(model_path, "framework.json"), "w") as fout:
             preprocessing = [p.to_json() for p in self.preprocessings]
             learners_params = [learner.get_params() for learner in self.learners]
@@ -662,6 +703,14 @@ class ModelFramework:
                 "is_stacked": self._is_stacked,
                 "joblib_version": joblib.__version__,
             }
+
+            # TODO: Add path of dimension reducer to meta data
+            if dim_reducer_filename:
+                desc["dim_reducer_path"] = dim_reducer_filename
+                # Store type of dimension reduction method
+                if hasattr(self, "_dim_reduction_method"):
+                    desc["dim_reduction_method"] = self._dim_reduction_method
+
             desc["final_loss"] = str(desc["final_loss"])
             if self._threshold is not None:
                 desc["threshold"] = self._threshold

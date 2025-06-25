@@ -82,7 +82,7 @@ class AutoML(BaseAutoML):
         n_jobs: int = -1,
         verbose: int = 1,
         random_state: int = 1234,
-        # TODO
+        # TODO: alteration by Maleen
         dim_reduction_method: Literal["pca", "svc", None] = None,
         pca_variance_threshold=0.9,
         svd_components=2,
@@ -403,10 +403,13 @@ class AutoML(BaseAutoML):
         self.underprivileged_groups = underprivileged_groups
         self.n_jobs = n_jobs
         self.random_state = random_state
-        # TODO
-        self.dim_reduction_method = dim_reduction_method
-        self.pca_variance_threshold = pca_variance_threshold
-        self.svd_components = svd_components
+
+        # TODO: alteration by Maleen
+        # Features for dimension reduction
+        self._dim_reduction_method = dim_reduction_method
+        self._pca_variance_threshold = pca_variance_threshold
+        self._svd_components = svd_components
+        self.init_dim_reducer()
 
     def fit(
         self,
@@ -435,7 +438,6 @@ class AutoML(BaseAutoML):
         Returns:
             AutoML object: Returns `self`
         """
-        print("DEBUG (automl.py): Calling fit method ...")
         try:
             original_backend = matplotlib.get_backend()
             matplotlib.use("Agg")

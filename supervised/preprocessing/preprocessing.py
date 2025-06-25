@@ -2,14 +2,14 @@ import logging
 
 import numpy as np
 import pandas as pd
+import os
+import joblib
 
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
 )
 from supervised.exceptions import AutoMLException
-from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
-from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.transformer.categorical_transformer import (
     CategoricalTransformer,
 )
@@ -30,6 +30,7 @@ from supervised.preprocessing.transformer.missing_transformer import (
 )
 from supervised.preprocessing.transformer.scale_transformer import ScaleTransformer
 from supervised.preprocessing.transformer.text_transformer import TextTransformer
+from supervised.preprocessing.preprocessing_registry import PreprocessingRegistry
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
@@ -43,8 +44,7 @@ class Preprocessing(object):
         model_name=None,
         k_fold=None,
         repeat=None,
-        # TODO: change to None later
-        dim_reduction_method="pca",
+        dim_reduction_method=None,
         pca_variance_threshold=0.95,
         svd_components=2,
     ):
@@ -72,15 +72,58 @@ class Preprocessing(object):
         self._k_fold = k_fold
         self._repeat = repeat
 
-        # TODO
-        self._dim_reduction_method = self._params.get(
-            "dim_reduction_method", dim_reduction_method
-        )
+        # TODO: alteration by Maleen
         self._dim_reducer = None
+        self._dim_reduction_method = (
+            dim_reduction_method
+            if dim_reduction_method is not None
+            else self._params.get("dim_reduction_method")
+        )
+        print(
+            "DEBUG (preprocessing.py; init): Dim reduction method = ",
+            self._dim_reduction_method,
+        )
+
         self._pca_variance_threshold = self._params.get(
             "pca_variance_threshold", pca_variance_threshold
         )
         self._svd_components = self._params.get("svd_components", svd_components)
+
+        if self._dim_reduction_method:
+            try:
+                dim_red_class = PreprocessingRegistry.get_class(
+                    self._dim_reduction_method
+                )
+                dim_red_params = PreprocessingRegistry.get_default_params(
+                    self._dim_reduction_method
+                ).copy()
+
+                user_kwargs = self._params.get("dim_reduction_kwargs", {})
+                dim_red_params.update(user_kwargs)
+
+                if self._dim_reduction_method == "pca":
+                    dim_red_params.setdefault(
+                        "variance_threshold", self._pca_variance_threshold
+                    )
+                elif self._dim_reduction_method == "svd":
+                    dim_red_params.setdefault("n_components", self._svd_components)
+
+                self._dim_reducer = dim_red_class(**dim_red_params)
+                print(
+                    "DEBUG (preprocessing.py; init): Dim reducer initialized = ",
+                    self._dim_reducer,
+                )
+
+            except KeyError:
+                raise AutoMLException(
+                    f"Dim reduction method '{self._dim_reduction_method}' is "
+                    f"not registered. Available: "
+                    f"{', '.join(PreprocessingRegistry.registry.keys())}"
+                )
+            except Exception as e:
+                raise AutoMLException(
+                    f"Error when initializing '{self._dim_reduction_method}': {e}"
+                )
 
     def _exclude_missing_targets(self, X=None, y=None):
         # check if there are missing values in target column
@@ -99,6 +142,7 @@ class Preprocessing(object):
     # fit and transform
     def fit_and_transform(self, X_train, y_train, sample_weight=None):
         logger.debug("Preprocessing.fit_and_transform")
+        print("DEBUG (preprocesing.py; fit_and_transform) Fit_and_transform wird aufgerufen mit folgenenden X-Daten:", X_train.head())
 
         if y_train is not None:
             # target preprocessing
@@ -311,54 +355,37 @@ class Preprocessing(object):
 
         # TODO
         print(
-            "DEBUG preprocessing.py; fit_and_transform: X_train data wird mit folgenden Spalten übergeben: ",
+            "DEBUG preprocessing.py; fit_and_transform: X_train data  sollte mit Originalspalten übergeben werden: ",
             X_train.columns,
         )
         # Dim reduction
-        if self._dim_reduction_method is not None:
-            print(
-                f"DEBUG (preprocessing.py in fit_and_transform): Usage of dim reduction method: {self._dim_reduction_method}"
-            )
-            numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
-            print(
-                "DEBUG (preprocessing.py in fit_and_transform): Numeric columns: ",
-                numeric_cols,
-            )
-            if numeric_cols:
-
-                non_numeric_cols = X_train.select_dtypes(
-                    exclude="number"
-                ).columns.tolist()
-                X_non_numeric = X_train[non_numeric_cols]
-
-                if self._dim_reduction_method == "pca":
-                    print(
-                        f"DEBUG (preprocessing.py in fit_and_transform): Usage of PCA with train data: {X_train.head()}"
-                    )
-                    self._dim_reducer = PCATransformer(
-                        variance_threshold=self._pca_variance_threshold
-                    )
-                    self._dim_reducer.fit(X_train[numeric_cols])
-                    X_train = self._dim_reducer.transform(X_train[numeric_cols])
-
-                    print(
-                        f"DEBUG (preprocessing.py in fit_and_transform): X train data after PCA:\n {X_train}"
-                    )
-
-                elif self._dim_reduction_method == "svd":
-                    self._dim_reducer = SVDTransformer(
-                        n_components=self._svd_components
-                    )
-                    self._dim_reducer.fit(X_train[numeric_cols])
-                    X_numeric_svd = self._dim_reducer.transform(X_train[numeric_cols])
-
-                    X_train = pd.concat(
-                        [
-                            X_non_numeric.reset_index(drop=True),
-                            X_numeric_svd.reset_index(drop=True),
-                        ],
-                        axis=1,
-                    )
+        # if self._dim_reducer is not None:
+        #     print(
+        #         f"DEBUG (preprocessing.py in fit_and_transform): Use Dim-Reducer {self._dim_reduction_method}"
+        #     )
+        #     numeric_cols = X_train.select_dtypes(include="number").columns.tolist()
+        #     if numeric_cols:
+        #         X_numeric = X_train[numeric_cols]
+        #         X_non_numeric = X_train.drop(columns=numeric_cols)
+        #
+        #         self._dim_reducer.fit(X_numeric)
+        #         X_numeric_transformed = self._dim_reducer.transform(X_numeric)
+        #         X_numeric_transformed = pd.DataFrame(
+        #             X_numeric_transformed,
+        #             index=X_numeric.index,
+        #             columns=[
+        #                 f"{self._dim_reduction_method}_{i}"
+        #                 for i in range(X_numeric_transformed.shape[1])
+        #             ],
+        #         )
+        #
+        #         X_train = pd.concat(
+        #             [
+        #                 X_non_numeric.reset_index(drop=True),
+        #                 X_numeric_transformed.reset_index(drop=True),
+        #             ],
+        #             axis=1,
+        #         )
 
         if self._add_random_feature:
             # -1, 1, with 0 mean
@@ -496,40 +523,26 @@ class Preprocessing(object):
                 X_validation = scale.transform(X_validation)
 
         # TODO
-        if (
-            self._dim_reduction_method in ["pca", "svd"]
-            and self._dim_reducer is not None
-        ):
+        if self._dim_reducer is not None:
             numeric_cols = X_validation.select_dtypes(include="number").columns.tolist()
-            non_numeric_cols = X_validation.select_dtypes(
-                exclude="number"
-            ).columns.tolist()
-
             if numeric_cols:
-                X_non_numeric = X_validation[non_numeric_cols]
+                X_numeric = X_validation[numeric_cols]
+                X_non_numeric = X_validation.drop(columns=numeric_cols)
 
-                if self._dim_reduction_method == "pca":
-                    X_numeric_pca = self._dim_reducer.transform(
-                        X_validation[numeric_cols]
-                    )
-                    X_validation = pd.concat(
-                        [
-                            X_non_numeric.reset_index(drop=True),
-                            X_numeric_pca.reset_index(drop=True),
-                        ],
-                        axis=1,
-                    )
-                elif self._dim_reduction_method == "svd":
-                    X_numeric_svd = self._dim_reducer.transform(
-                        X_validation[numeric_cols]
-                    )
-                    X_validation = pd.concat(
-                        [
-                            X_non_numeric.reset_index(drop=True),
-                            X_numeric_svd.reset_index(drop=True),
-                        ],
-                        axis=1,
-                    )
+                X_numeric_transformed = self._dim_reducer.transform(X_numeric)
+                X_numeric_transformed = pd.DataFrame(
+                    X_numeric_transformed,
+                    index=X_numeric.index,
+                    columns=[f"pc{i+1}" for i in range(X_numeric_transformed.shape[1])],
+                )
+
+                X_validation = pd.concat(
+                    [
+                        X_non_numeric.reset_index(drop=True),
+                        X_numeric_transformed.reset_index(drop=True),
+                    ],
+                    axis=1,
+                )
 
         if self._add_random_feature:
             # -1, 1, with 0 mean
@@ -660,41 +673,26 @@ class Preprocessing(object):
         if self._remove_columns:
             preprocessing_params["remove_columns"] = self._remove_columns
         if self._missing_values is not None and len(self._missing_values):
-            mvs = []  # refactor
-            for mv in self._missing_values:
-                if mv.to_json():
-                    mvs += [mv.to_json()]
+            mvs = [mv.to_json() for mv in self._missing_values if mv.to_json()]
             if mvs:
                 preprocessing_params["missing_values"] = mvs
         if self._categorical is not None and len(self._categorical):
-            cats = []  # refactor
-            for cat in self._categorical:
-                if cat.to_json():
-                    cats += [cat.to_json()]
+            cats = [cat.to_json() for cat in self._categorical if cat.to_json()]
             if cats:
                 preprocessing_params["categorical"] = cats
-
-        if self._datetime_transforms is not None and len(self._datetime_transforms):
-            dtts = []
-            for dtt in self._datetime_transforms:
-                dtts += [dtt.to_json()]
+        if self._datetime_transforms:
+            dtts = [dtt.to_json() for dtt in self._datetime_transforms]
             if dtts:
                 preprocessing_params["datetime_transforms"] = dtts
-
-        if self._text_transforms is not None and len(self._text_transforms):
-            tts = []
-            for tt in self._text_transforms:
-                tts += [tt.to_json()]
+        if self._text_transforms:
+            tts = [tt.to_json() for tt in self._text_transforms]
             if tts:
                 preprocessing_params["text_transforms"] = tts
-
         if self._golden_features is not None:
             preprocessing_params["golden_features"] = self._golden_features.to_json()
-
         if self._kmeans is not None:
             preprocessing_params["kmeans"] = self._kmeans.to_json()
-
-        if self._scale is not None and len(self._scale):
+        if self._scale:
             scs = [sc.to_json() for sc in self._scale if sc.to_json()]
             if scs:
                 preprocessing_params["scale"] = scs
@@ -704,17 +702,24 @@ class Preprocessing(object):
                 preprocessing_params["categorical_y"] = cat_y
         if self._scale_y is not None:
             preprocessing_params["scale_y"] = self._scale_y.to_json()
-
         if "ml_task" in self._params:
             preprocessing_params["ml_task"] = self._params["ml_task"]
-
         if self._add_random_feature:
             preprocessing_params["add_random_feature"] = True
-
         if self._drop_features:
             preprocessing_params["drop_features"] = self._drop_features
 
         preprocessing_params["params"] = self._params
+
+        # Save dim reducer (if available)
+        if self._dim_reducer is not None:
+            reducer_filename = f"preprocessing_dim_reducer_fold_{self.fold_no}_repeat_{self.repeat_no}.joblib"
+            joblib.dump(
+                self._dim_reducer,
+                os.path.join(self._params["results_path"], reducer_filename),
+            )
+            preprocessing_params["dim_reducer_path"] = reducer_filename
+            preprocessing_params["dim_reduction_method"] = self._dim_reduction_method
 
         return preprocessing_params
 
@@ -731,48 +736,42 @@ class Preprocessing(object):
             for mv_data in data_json["missing_values"]:
                 mv = MissingValuesTransformer()
                 mv.from_json(mv_data)
-                self._missing_values += [mv]
+                self._missing_values.append(mv)
         if "categorical" in data_json:
             self._categorical = []
             for cat_data in data_json["categorical"]:
                 cat = CategoricalTransformer()
                 cat.from_json(cat_data)
-                self._categorical += [cat]
-
+                self._categorical.append(cat)
         if "datetime_transforms" in data_json:
             self._datetime_transforms = []
-            for dtt_params in data_json["datetime_transforms"]:
+            for dtt_data in data_json["datetime_transforms"]:
                 dtt = DateTimeTransformer()
-                dtt.from_json(dtt_params)
-                self._datetime_transforms += [dtt]
-
+                dtt.from_json(dtt_data)
+                self._datetime_transforms.append(dtt)
         if "text_transforms" in data_json:
             self._text_transforms = []
-            for tt_params in data_json["text_transforms"]:
+            for tt_data in data_json["text_transforms"]:
                 tt = TextTransformer()
-                tt.from_json(tt_params)
-                self._text_transforms += [tt]
-
+                tt.from_json(tt_data)
+                self._text_transforms.append(tt)
         if "golden_features" in data_json:
             self._golden_features = GoldenFeaturesTransformer()
             self._golden_features.from_json(data_json["golden_features"], results_path)
-
         if "kmeans" in data_json:
             self._kmeans = KMeansTransformer()
             self._kmeans.from_json(data_json["kmeans"], results_path)
-
         if "scale" in data_json:
             self._scale = []
             for scale_data in data_json["scale"]:
                 sc = ScaleTransformer()
                 sc.from_json(scale_data)
-                self._scale += [sc]
+                self._scale.append(sc)
         if "categorical_y" in data_json:
             if "new_columns" in data_json["categorical_y"]:
                 self._categorical_y = LabelBinarizer()
             else:
                 self._categorical_y = LabelEncoder()
-
             self._categorical_y.from_json(data_json["categorical_y"])
         if "scale_y" in data_json:
             self._scale_y = ScaleTransformer()
@@ -782,3 +781,21 @@ class Preprocessing(object):
 
         self._add_random_feature = data_json.get("add_random_feature", False)
         self._drop_features = data_json.get("drop_features", [])
+
+        # Load dim reducer (if available)
+        self._dim_reduction_method = data_json.get("dim_reduction_method")
+        dim_reducer_filename = data_json.get("dim_reducer_path")
+        if dim_reducer_filename:
+            full_path = os.path.join(results_path, dim_reducer_filename)
+            if os.path.exists(full_path):
+                self._dim_reducer = joblib.load(full_path)
+                print(
+                    f"DEBUG (Preprocessing.from_json): Loaded dim reducer from {full_path}"
+                )
+            else:
+                print(
+                    f"WARNING (Preprocessing.from_json): Dim reducer file not found at {full_path}"
+                )
+                self._dim_reducer = None
+        else:
+            self._dim_reducer = None

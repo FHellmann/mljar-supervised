@@ -32,6 +32,7 @@ from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.transformer.exclude_missing_target import (
     ExcludeRowsMissingTargetTransformer,
 )
+from supervised.preprocessing.preprocessing_registry import PreprocessingRegistry
 
 # disable EDA
 # from supervised.preprocessing.eda import EDA
@@ -114,11 +115,43 @@ class BaseAutoML(BaseEstimator, ABC):
         self._optuna_verbose = True
         self._n_jobs = -1
         self._id = str(uuid.uuid4())
-        # TODO
-        self._dim_reduction_method = "pca"
+        # TODO: alteration by Maleen
+        # Attributes for dimension reduction
+        self._dim_reduction_method = None
         self._pca_variance_threshold = 0.9
         self._svd_components = 2
         self._dim_reducer = None
+
+    # TODO: alteration by Maleen
+    def init_dim_reducer(self):
+        if self._dim_reduction_method is None:
+            print("No dimensionality reduction method set.")
+            return
+
+        try:
+            dim_red_class = PreprocessingRegistry.get_class(self._dim_reduction_method)
+            dim_red_params = PreprocessingRegistry.get_default_params(
+                self._dim_reduction_method
+            ).copy()
+
+            if self._dim_reduction_method == "pca":
+                dim_red_params.setdefault(
+                    "variance_threshold", self._pca_variance_threshold
+                )
+            elif self._dim_reduction_method == "svd":
+                dim_red_params.setdefault("n_components", self._svd_components)
+
+            self._dim_reducer = dim_red_class(**dim_red_params)
+            print(f"DEBUG: Dimension reducer is initialized: {self._dim_reducer}")
+
+        except KeyError:
+            raise RuntimeError(
+                f"Dimension reduction method '{self._dim_reduction_method}' is not supported."
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"Error initializing '{self._dim_reduction_method}': {e}"
+            )
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
@@ -141,6 +174,7 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def load(self, path):
         logger.info("Loading AutoML models ...")
+        print("DEBUG (base_automl.py; load)")
         try:
             with open(os.path.join(path, "params.json")) as file:
                 params = json.load(file)
@@ -189,20 +223,38 @@ class BaseAutoML(BaseEstimator, ABC):
             self._random_state = params.get("random_state", self._random_state)
             stacked_models = params.get("stacked")
 
+            # TODO: alteration by Maleen
             # Dim reduction
-            self._dim_reduction_method = params.get(
-                "dim_reduction_method", self._dim_reduction_method
-            )
-            self._pca_variance_threshold = params.get(
-                "pca_variance_threshold", self._pca_variance_threshold
-            )
-            self._dim_reducer = params.get("dim_reducer", self._dim_reducer)
-            self._svd_components = params.get("svd_components", self._svd_components)
+            self._dim_reduction_method = params.get("dim_reduction_method", None)
+            self._pca_variance_threshold = params.get("pca_variance_threshold", 0.9)
+            self._svd_components = params.get("svd_components", 2)
 
-            print(
-                "DEBUG (base_automl.py; load): Dim reduce method: ",
-                self._dim_reduction_method,
-            )
+            if self._dim_reduction_method is not None:
+                try:
+                    dim_red_class = PreprocessingRegistry.get_class(
+                        self._dim_reduction_method
+                    )
+                    dim_red_params = PreprocessingRegistry.get_default_params(
+                        self._dim_reduction_method
+                    ).copy()
+
+                    if self._dim_reduction_method == "pca":
+                        dim_red_params["variance_threshold"] = (
+                            self._pca_variance_threshold
+                        )
+                    elif self._dim_reduction_method == "svd":
+                        dim_red_params["n_components"] = self._svd_components
+
+                    self._dim_reducer = dim_red_class(**dim_red_params)
+                    print(
+                        f"DEBUG (base_automl.py; load): Dim reducer loaded from registry: {self._dim_reducer}"
+                    )
+                except Exception as e:
+                    raise AutoMLException(
+                        f"Error loading preprocessing module '{self._dim_reduction_method}': {str(e)}"
+                    )
+            else:
+                self._dim_reducer = None
 
             best_model_name = params.get("best_model")
             load_on_predict = params.get("load_on_predict")
@@ -363,6 +415,9 @@ class BaseAutoML(BaseEstimator, ABC):
         return 1
 
     def train_model(self, params):
+        print(
+            "DEBUG (base_automl.py; train_model): Methode train_model wird aufgerufen!"
+        )
 
         # do we have enough time to train?
         # if not, skip
@@ -393,7 +448,7 @@ class BaseAutoML(BaseEstimator, ABC):
 
         params["max_time_for_learner"] = max_time_for_learner
 
-        # TODO
+        # TODO: alteration by Maleen
         if self._dim_reduction_method:
             print(
                 f"DEBUG (base_automl.py in train_model): Dim reduction method: {self._dim_reduction_method}"
@@ -401,6 +456,7 @@ class BaseAutoML(BaseEstimator, ABC):
         params["dim_reduction_method"] = self._dim_reduction_method
         params["pca_variance_threshold"] = self._pca_variance_threshold
         params["svd_components"] = self._svd_components
+        # dim reducer -> geht nicht in json
 
         total_time_constraint = TotalTimeConstraint(
             {
@@ -417,6 +473,8 @@ class BaseAutoML(BaseEstimator, ABC):
             params,
             callbacks=[early_stop, total_time_constraint],
         )
+
+        print("DEBUG (base_automl.py; train_model): Model Framework = ", mf)
 
         # start training
         logger.info(
@@ -605,6 +663,11 @@ class BaseAutoML(BaseEstimator, ABC):
 
     def _save_data(self, X, y, sample_weight=None, cv=None, sensitive_features=None):
         # save information about original data
+
+        print(
+            "(base_automl.py; _save_data) : Folgende X-Daten werden gespeichert (relevant für predict und Spaltennamen) = ",
+            X.head(),
+        )
 
         self._save_data_info(X, y, sample_weight, sensitive_features)
 
@@ -831,7 +894,7 @@ class BaseAutoML(BaseEstimator, ABC):
             elif isinstance(sensitive_features, pd.Series):
                 sensitive_features = pd.DataFrame(sensitive_features)
 
-        # TODO
+        # TODO: alteration by Maleen
         transformer = ExcludeRowsMissingTargetTransformer()
         X, y, sample_weight, sensitive_features = transformer.transform(
             X=X,
@@ -1010,6 +1073,8 @@ class BaseAutoML(BaseEstimator, ABC):
     def _fit(self, X, y, sample_weight=None, cv=None, sensitive_features=None):
         """Fits the AutoML model with data"""
 
+        print("DEBUG (base_automl.py; _fit): Fit-Methode wurde aufgerufen!")
+
         if self._fit_level == "finished":
             print(
                 "This model has already been fitted. You can use predict methods or select a new 'results_path' for a new a 'fit()'."
@@ -1025,22 +1090,24 @@ class BaseAutoML(BaseEstimator, ABC):
             f"DEBUG (base_automl.py; _fit): X nachdem _build_dataframe aufgerufen wurde = {X.head()}"
         )
 
-        # TODO
+        # TODO: alteration by Maleen
         # Optional: Use dim reduction method
-        if self._dim_reduction_method == "pca":
-            pca_transformer = PCATransformer(
-                variance_threshold=self._pca_variance_threshold
-            )
-            pca_transformer.fit(X)
-            X_pca = pca_transformer.transform(X)
-            self._dim_reducer = pca_transformer
-        if self._dim_reduction_method == "svd":
-            svd_transformer = SVDTransformer(
-                n_components=self._svd_components,
-            )
-            svd_transformer.fit(X)
-            X_svd = svd_transformer.transform(X)
-            self._dim_reducer = svd_transformer
+        if self._dim_reduction_method is not None:
+            dim_red_class = PreprocessingRegistry.get_class(self._dim_reduction_method)
+            dim_red_params = PreprocessingRegistry.get_default_params(
+                self._dim_reduction_method
+            ).copy()
+
+            if self._dim_reduction_method == "pca":
+                dim_red_params["variance_threshold"] = self._pca_variance_threshold
+            elif self._dim_reduction_method == "svd":
+                dim_red_params["n_components"] = self._svd_components
+
+            dim_reducer = dim_red_class(**dim_red_params)
+            dim_reducer.fit(X)
+            X_dim_reduction = dim_reducer.transform(X)
+
+            self._dim_reducer = dim_reducer
 
         self.n_rows_in_ = X.shape[0]
         self.n_features_in_ = X.shape[1]
@@ -1134,23 +1201,30 @@ class BaseAutoML(BaseEstimator, ABC):
 
             # Save data
 
-            # TODO
-            if self._dim_reduction_method=="pca":
-                X = X_pca
-            elif self._dim_reduction_method=="svd":
-                X = X_svd
-
-            self._save_data(
-                X.copy(deep=False),
-                y.copy(deep=False),
-                None if sample_weight is None else sample_weight.copy(deep=False),
-                cv,
-                (
-                    None
-                    if sensitive_features is None
-                    else sensitive_features.copy(deep=False)
-                ),
-            )
+            if self._dim_reducer is not None:
+                self._save_data(
+                    X_dim_reduction.copy(deep=False),
+                    y.copy(deep=False),
+                    None if sample_weight is None else sample_weight.copy(deep=False),
+                    cv,
+                    (
+                        None
+                        if sensitive_features is None
+                        else sensitive_features.copy(deep=False)
+                    ),
+                )
+            else:
+                self._save_data(
+                    X.copy(deep=False),
+                    y.copy(deep=False),
+                    None if sample_weight is None else sample_weight.copy(deep=False),
+                    cv,
+                    (
+                        None
+                        if sensitive_features is None
+                        else sensitive_features.copy(deep=False)
+                    ),
+                )
 
             tuner = MljarTuner(
                 self._get_tuner_params(
@@ -1263,6 +1337,19 @@ class BaseAutoML(BaseEstimator, ABC):
                         else:
                             print(
                                 f"DEBUG (base_automl.py in _fit): Calling train_model. All params: {self._all_params}"
+                            )
+                            # TODO
+                            # Übergabe der DimRed-Parameter an das Modell
+                            params.update(
+                                {
+                                    "dim_reduction_method": self._dim_reduction_method,
+                                    "pca_variance_threshold": self._pca_variance_threshold,
+                                    "svd_components": self._svd_components,
+                                }
+                            )
+                            print(
+                                "DEBUG (base_automl.py): Übergabe an train_model mit DimRed:",
+                                params["dim_reduction_method"],
                             )
                             trained = self.train_model(params)
 
@@ -1526,6 +1613,10 @@ class BaseAutoML(BaseEstimator, ABC):
         )
 
     def _base_predict(self, X, model=None):
+        print(
+            "DEBUG (base_automl.py; _base_predict): Predict wird aufgerufen mit folgenden X-Daten: ",
+            X.head(),
+        )
         if model is None:
             if self._best_model is None:
                 self.load(self.results_path)
@@ -1537,16 +1628,13 @@ class BaseAutoML(BaseEstimator, ABC):
             )
 
         print(
-            "DEBUG (base_automl.py; _base_predict) Dim reduction: ",
-            self._dim_reduction_method,
+            f"DEBUG (base_automl.py; _base_predict) X vor Anwendung der PCA: , {X.head()} \n {X.shape}"
         )
-        print(f"DEBUG (base_automl.py; _base_predict) X before PCA: , {X.shape}")
         # TODO
         if self._dim_reduction_method == "pca":
             X = self._dim_reducer.transform(X)
         if self._dim_reduction_method == "svd":
             X = self._dim_reducer.transform(X)
-
 
         print(f"DEBUG (base_automl.py; _base_predict) X after PCA: , {X.shape}")
 
@@ -1555,7 +1643,15 @@ class BaseAutoML(BaseEstimator, ABC):
             X.columns = [str(c) for c in X.columns]
 
         input_columns = X.columns.tolist()
-        print("DEBUG (base_automl; _base_predict): X input columns = ", input_columns)
+        print(
+            "DEBUG (base_automl; _base_predict): X columns nach _build_dataframe = ",
+            input_columns,
+        )
+
+        print(
+            "DEBUG (base_automl.py; _base_predict): Spalten in data_info = ",
+            self._data_info["columns"],
+        )
         for column in self._data_info["columns"]:
             if column not in input_columns and self._dim_reduction_method is not None:
                 raise AutoMLException(
@@ -1564,6 +1660,11 @@ class BaseAutoML(BaseEstimator, ABC):
 
         X = X[self._data_info["columns"]]
         self._validate_X_predict(X)
+
+        print(
+            "DEBUG (base_automl.py; base_predict): X für die predict-Methode: ",
+            X.head(),
+        )
 
         # is stacked model
         if model._is_stacked:
