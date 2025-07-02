@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
-from typing import Optional
+from typing import Optional, Union, Tuple
 
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from sklearn.base import BaseEstimator, ClassNamePrefixFeaturesOutMixin
 
 
@@ -29,7 +29,9 @@ class BaseTransformer(ABC, ClassNamePrefixFeaturesOutMixin, BaseEstimator):
         """
         pass
 
-    def fit_transform(self, X: DataFrame, y: Optional[DataFrame] = None, **kwargs) -> tuple[DataFrame, DataFrame]:
+    def fit_transform(
+        self, X: DataFrame, y: Optional[Union[DataFrame, Series]] = None, **kwargs
+    ) -> tuple[DataFrame, DataFrame]:
         """
         Fit the transformer to the data, then transform it.
 
@@ -50,16 +52,22 @@ class BaseTransformer(ABC, ClassNamePrefixFeaturesOutMixin, BaseEstimator):
         y_transformed = self.transform(y, **kwargs)
         return X_transformed, y_transformed
 
+    # TODO: hier habe ich optional y hinzugefügt -> benötigt für SMOTE
+    # TODO: ich habe die return vorgaben angepasst -> benötigt für SMOTE
     @abstractmethod
-    def transform(self, X: DataFrame, **kwargs) -> DataFrame:
+    def transform(
+        self, X: DataFrame, y: Optional[Union[DataFrame, Series]] = None, **kwargs
+    ) -> Union[DataFrame, Tuple[DataFrame, Union[DataFrame, Series]]]:
         """
         Transform the input data using the fitted transformer.
 
         Args:
             X (DataFrame): Input data.
+            y (DataFrame or Series): Optional target values for specific preprocessing methods.
 
         Returns:
-            DataFrame: Transformed data.
+            DataFrame or combination of DataFrame and DataFrame/Series: Transformed data.
+
         """
         pass
 
@@ -73,4 +81,4 @@ class BaseTransformer(ABC, ClassNamePrefixFeaturesOutMixin, BaseEstimator):
         Returns:
             DataFrame: Inverse data.
         """
-        raise NotImplementedError('Inverse transformation not implemented.')
+        raise NotImplementedError("Inverse transformation not implemented.")

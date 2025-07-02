@@ -92,13 +92,16 @@ class ModelFramework:
         self._automl_random_state = params.get("automl_random_state", 42)
 
         # TODO
-        # Dim reduction methods aus params lesen
-        self._dim_reduction_method = params.get("dim_reduction_method", "pca")
+        # Dim reduction method
+        self._dim_reduction_method = params.get("dim_reduction_method", None)
         self._pca_variance_threshold = params.get("pca_variance_threshold", 0.9)
         self._svd_components = params.get("svd_components", 2)
         self._dim_reducer = None
+        # Oversampling method
+        self._oversampling_method = params.get("oversampling_method", None)
+        self._oversampler = None
 
-        # Dimensionality Reducer über Registry laden
+        # Load preprocessing methods
         if self._dim_reduction_method is not None:
             try:
                 dim_red_class = PreprocessingRegistry.get_class(
@@ -108,24 +111,38 @@ class ModelFramework:
                     self._dim_reduction_method
                 ).copy()
 
-                # Parameter ggf. überschreiben
                 if self._dim_reduction_method == "pca":
                     dim_red_params["variance_threshold"] = self._pca_variance_threshold
                 elif self._dim_reduction_method == "svd":
                     dim_red_params["n_components"] = self._svd_components
 
-                # Instanz erstellen
                 self._dim_reducer = dim_red_class(**dim_red_params)
 
                 print(
                     f"DEBUG (model_framework.py; init): Dim reducer initialized: {self._dim_reducer}"
                 )
-
             except Exception as e:
                 logger.error(
                     f"Error initializing dim reducer '{self._dim_reduction_method}': {str(e)}"
                 )
                 self._dim_reducer = None
+
+        if self._oversampler is not None:
+            try:
+                oversampling_class = PreprocessingRegistry.get_class(
+                    self._oversampling_method
+                )
+
+                self._oversampler = oversampling_class()
+
+                print(
+                    f"DEBUG (model_framework.py; init): Oversampler initialized: {self._oversampler}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error initializing oversampler '{self._oversampler}': {str(e)}"
+                )
+                self._oversampler = None
 
     def get_train_time(self):
         return self.train_time

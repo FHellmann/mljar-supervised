@@ -27,8 +27,6 @@ from supervised.callbacks.total_time_constraint import TotalTimeConstraint
 from supervised.ensemble import Ensemble
 from supervised.exceptions import AutoMLException, NotTrainedException
 from supervised.model_framework import ModelFramework
-from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
-from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.transformer.exclude_missing_target import (
     ExcludeRowsMissingTargetTransformer,
 )
@@ -121,37 +119,57 @@ class BaseAutoML(BaseEstimator, ABC):
         self._pca_variance_threshold = 0.9
         self._svd_components = 2
         self._dim_reducer = None
+        # Attributes for oversampling
+        self._oversampling_method = None
+        self._oversampler = None
 
     # TODO: alteration by Maleen
-    def init_dim_reducer(self):
+    def init_preprocessing_methods(self):
+
+        # Dim reduction
         if self._dim_reduction_method is None:
             print("No dimensionality reduction method set.")
-            return
-
-        try:
-            dim_red_class = PreprocessingRegistry.get_class(self._dim_reduction_method)
-            dim_red_params = PreprocessingRegistry.get_default_params(
-                self._dim_reduction_method
-            ).copy()
-
-            if self._dim_reduction_method == "pca":
-                dim_red_params.setdefault(
-                    "variance_threshold", self._pca_variance_threshold
+        else:
+            try:
+                dim_red_class = PreprocessingRegistry.get_class(
+                    self._dim_reduction_method
                 )
-            elif self._dim_reduction_method == "svd":
-                dim_red_params.setdefault("n_components", self._svd_components)
+                dim_red_params = PreprocessingRegistry.get_default_params(
+                    self._dim_reduction_method
+                ).copy()
 
-            self._dim_reducer = dim_red_class(**dim_red_params)
-            print(f"DEBUG: Dimension reducer is initialized: {self._dim_reducer}")
+                if self._dim_reduction_method == "pca":
+                    dim_red_params.setdefault(
+                        "variance_threshold", self._pca_variance_threshold
+                    )
+                elif self._dim_reduction_method == "svd":
+                    dim_red_params.setdefault("n_components", self._svd_components)
+                else:
+                    raise ValueError(
+                        f"Dimension reduction method '{self._dim_reduction_method}' not available."
+                    )
 
-        except KeyError:
-            raise RuntimeError(
-                f"Dimension reduction method '{self._dim_reduction_method}' is not supported."
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Error initializing '{self._dim_reduction_method}': {e}"
-            )
+                self._dim_reducer = dim_red_class(**dim_red_params)
+                print(f"DEBUG: Dimensionality reducer initialized: {self._dim_reducer}")
+            except Exception as e:
+                print(f"Error initializing dimensionality reducer: {e}")
+
+        # Oversampling
+        if self._oversampling_method is None:
+            print("No oversampling method is set.")
+        else:
+            try:
+                oversampling_class = PreprocessingRegistry.get_class(
+                    self._oversampling_method
+                )
+                oversampling_params = PreprocessingRegistry.get_default_params(
+                    self._oversampling_method
+                ).copy()
+
+                self._oversampler = oversampling_class(**oversampling_params)
+                print(f"DEBUG: Oversampler initialized: {self._oversampler}")
+            except Exception as e:
+                print(f"Error initializing oversampler: {e}")
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
@@ -457,6 +475,12 @@ class BaseAutoML(BaseEstimator, ABC):
         params["pca_variance_threshold"] = self._pca_variance_threshold
         params["svd_components"] = self._svd_components
         # dim reducer -> geht nicht in json
+
+        if self._oversampling_method:
+            print(
+                f"DEBUG (base_automl.py in train_model): Oversampling method: {self._oversampling_method}"
+            )
+            params["oversampling_method"] = self._oversampling_method
 
         total_time_constraint = TotalTimeConstraint(
             {
@@ -1109,6 +1133,18 @@ class BaseAutoML(BaseEstimator, ABC):
 
             self._dim_reducer = dim_reducer
 
+        # Optional: use oversampling
+        if self._oversampling_method is not None:
+            oversampling_class = PreprocessingRegistry.get_class(
+                self._oversampling_method
+            )
+
+            oversampler = oversampling_class()
+            oversampler.fit(X, y)
+            oversampler_transformer = oversampler.transform(X, y)
+
+            self._oversampler = oversampler
+
         self.n_rows_in_ = X.shape[0]
         self.n_features_in_ = X.shape[1]
         self.n_classes = len(np.unique(y[~pd.isnull(y)]))
@@ -1345,11 +1381,14 @@ class BaseAutoML(BaseEstimator, ABC):
                                     "dim_reduction_method": self._dim_reduction_method,
                                     "pca_variance_threshold": self._pca_variance_threshold,
                                     "svd_components": self._svd_components,
+                                    "oversampling_method": self._oversampling_method,
                                 }
                             )
                             print(
                                 "DEBUG (base_automl.py): Übergabe an train_model mit DimRed:",
                                 params["dim_reduction_method"],
+                                " und Oversampler: ",
+                                params["oversampling_method"],
                             )
                             trained = self.train_model(params)
 

@@ -86,6 +86,7 @@ class AutoML(BaseAutoML):
         dim_reduction_method: Literal["pca", "svc", None] = None,
         pca_variance_threshold=0.9,
         svd_components=2,
+        oversampling_method: Literal["smote", None] = None,
     ):
         """
         Initialize `AutoML` object.
@@ -405,11 +406,14 @@ class AutoML(BaseAutoML):
         self.random_state = random_state
 
         # TODO: alteration by Maleen
-        # Features for dimension reduction
+        # Dimension reduction
         self._dim_reduction_method = dim_reduction_method
         self._pca_variance_threshold = pca_variance_threshold
         self._svd_components = svd_components
-        self.init_dim_reducer()
+        # Oversampling
+        self._oversampling_method = oversampling_method
+        # Call the initialisation method for each of the pre-processing methods used.
+        self.init_preprocessing_methods()
 
     def fit(
         self,
