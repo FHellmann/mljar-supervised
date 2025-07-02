@@ -1,48 +1,46 @@
 from typing import Optional, Union, Tuple
 
-from imblearn.under_sampling import EditedNearestNeighbours
+from imblearn.under_sampling import ClusterCentroids
 from pandas import DataFrame, Series
 
 from supervised.preprocessing.base_transformer import BaseTransformer
 from supervised.utils.attribute_storage import AttributeStorage
 
 
-class ENNTransformer(BaseTransformer, AttributeStorage):
+class CCTransformer(BaseTransformer, AttributeStorage):
     """
-    EditedNearestNeighboursTransformer
+    ClusterCentroidsTransformer
     """
 
     def __init__(self, results_path: Optional[str] = None):
-        super().__init__("enn", results_path)
+        super().__init__("cluster", results_path)
         self.results_path = results_path
         self._error = None
-        self.enn = None
+        self.cc = None
         self.X_resampled = None
         self.y_resampled = None
 
     def fit(self, X: DataFrame, y: DataFrame = None, **kwargs) -> None:
         if y is None:
-            raise ValueError(
-                "y must be provided to fit EditedNearestNeighboursTransformer."
-            )
-        self.enn = EditedNearestNeighbours()
+            raise ValueError("y must be provided to fit ClusterCentroidsTransformer.")
+        self.cc = ClusterCentroids(random_state=42)
 
     def transform(
         self, X: DataFrame, y: Optional[Union[DataFrame, Series]] = None, **kwargs
     ) -> Tuple[DataFrame, Union[DataFrame, Series]]:
         if y is None:
             raise ValueError(
-                "y must be provided to transform EditedNearestNeighboursTransformer."
+                "y must be provided to transform ClusterCentroidsTransformer."
             )
 
         print(
-            "DEBUG (EditedNearestNeighboursTransformer.py; transform): Shapes before undersampling: ",
+            "DEBUG (ClusterCentroidsTransformer.py; transform): Shapes before undersampling: ",
             X.shape,
             y.shape,
         )
-        X_res, y_res = self.enn.fit_resample(X, y)
+        X_res, y_res = self.cc.fit_resample(X, y)
         print(
-            "DEBUG (EditedNearestNeighboursTransformer.py; transform): Resampled shapes: ",
+            "DEBUG (ClusterCentroidsTransformer.py; transform): Resampled shapes: ",
             X_res.shape,
             y_res.shape,
         )
