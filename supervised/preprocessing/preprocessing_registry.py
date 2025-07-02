@@ -1,6 +1,8 @@
 from supervised.preprocessing.dim_reducer.PCATransformer import PCATransformer
 from supervised.preprocessing.dim_reducer.SVDTransformer import SVDTransformer
 from supervised.preprocessing.oversampler.SMOTETransformer import SMOTETransformer
+from supervised.preprocessing.oversampler.ADASYNTransformer import ADASYNTransformer
+
 
 class PreprocessingRegistry:
     registry = {}
@@ -23,4 +25,5 @@ class PreprocessingRegistry:
 
 PreprocessingRegistry.add("pca", PCATransformer, {"variance_threshold": 0.9})
 PreprocessingRegistry.add("svd", SVDTransformer, {"n_components": 2})
-PreprocessingRegistry.add("smote", SMOTETransformer, {"random_state": 42})
+PreprocessingRegistry.add("smote", SMOTETransformer, {})
+PreprocessingRegistry.add("adasyn", ADASYNTransformer, {})

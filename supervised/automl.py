@@ -86,7 +86,7 @@ class AutoML(BaseAutoML):
         dim_reduction_method: Literal["pca", "svc", None] = None,
         pca_variance_threshold=0.9,
         svd_components=2,
-        oversampling_method: Literal["smote", None] = None,
+        oversampling_method: Literal["smote", "adasyn", None] = None,
     ):
         """
         Initialize `AutoML` object.
