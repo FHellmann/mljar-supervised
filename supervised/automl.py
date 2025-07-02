@@ -87,6 +87,7 @@ class AutoML(BaseAutoML):
         pca_variance_threshold=0.9,
         svd_components=2,
         oversampling_method: Literal["smote", "adasyn", None] = None,
+        undersampling_method: Literal["enn", None] = None,
     ):
         """
         Initialize `AutoML` object.
@@ -412,6 +413,8 @@ class AutoML(BaseAutoML):
         self._svd_components = svd_components
         # Oversampling
         self._oversampling_method = oversampling_method
+        # Undersampling
+        self._undersampling_method = undersampling_method
         # Call the initialisation method for each of the pre-processing methods used.
         self.init_preprocessing_methods()
 

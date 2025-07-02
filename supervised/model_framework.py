@@ -100,6 +100,9 @@ class ModelFramework:
         # Oversampling method
         self._oversampling_method = params.get("oversampling_method", None)
         self._oversampler = None
+        # Undersampling method
+        self._undersampling_method = params.get("undersampling_method", None)
+        self._undersampler = None
 
         # Load preprocessing methods
         if self._dim_reduction_method is not None:
@@ -127,7 +130,7 @@ class ModelFramework:
                 )
                 self._dim_reducer = None
 
-        if self._oversampler is not None:
+        if self._oversampling_method is not None:
             try:
                 oversampling_class = PreprocessingRegistry.get_class(
                     self._oversampling_method
@@ -143,6 +146,23 @@ class ModelFramework:
                     f"Error initializing oversampler '{self._oversampler}': {str(e)}"
                 )
                 self._oversampler = None
+
+        if self._undersampling_method is not None:
+            try:
+                undersampling_class = PreprocessingRegistry.get_class(
+                    self._undersampling_method
+                )
+
+                self._undersampler = undersampling_class()
+
+                print(
+                    f"DEBUG (model_framework.py; init): Undersampler initialized: {self._undersampler}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error initializing undersampler '{self._undersampler}': {str(e)}"
+                )
+                self._undersampler = None
 
     def get_train_time(self):
         return self.train_time
@@ -691,6 +711,8 @@ class ModelFramework:
         print(
             f"DEBUG (model_framework.py; save) Dim reducer und method: {self._dim_reducer}, {self._dim_reduction_method}"
         )
+
+        # Store preprocessing method model(s)
         dim_reducer_filename = None
         if hasattr(self, "_dim_reducer") and self._dim_reducer is not None:
             print(
@@ -701,6 +723,28 @@ class ModelFramework:
             dim_reducer_full_path = os.path.join(model_path, dim_reducer_filename)
             joblib.dump(self._dim_reducer, dim_reducer_full_path)
             logger.info(f"Dim reducer saved to {dim_reducer_full_path}")
+
+        oversampler_filename = None
+        if hasattr(self, "_oversampler") and self._oversampler is not None:
+            print(
+                "DEBUG (model_framework.py; save): Store oversampler ",
+                self._oversampler,
+            )
+            oversampler_filename = "oversampler.joblib"
+            oversampler_full_path = os.path.join(model_path, oversampler_filename)
+            joblib.dump(self._oversampler, oversampler_full_path)
+            logger.info(f"Oversampler saved to {oversampler_full_path}")
+
+        undersampler_filename = None
+        if hasattr(self, "_undersampler") and self._undersampler is not None:
+            print(
+                "DEBUG (model_framework.py; save): Store undersampler ",
+                self._undersampler,
+            )
+            undersampler_filename = "undersampler.joblib"
+            undersampler_full_path = os.path.join(model_path, undersampler_filename)
+            joblib.dump(self._undersampler, undersampler_full_path)
+            logger.info(f"Undersampler saved to {undersampler_full_path}")
 
         with open(os.path.join(model_path, "framework.json"), "w") as fout:
             preprocessing = [p.to_json() for p in self.preprocessings]
@@ -727,6 +771,16 @@ class ModelFramework:
                 # Store type of dimension reduction method
                 if hasattr(self, "_dim_reduction_method"):
                     desc["dim_reduction_method"] = self._dim_reduction_method
+
+            if oversampler_filename:
+                desc["oversampler_path"] = oversampler_filename
+                if hasattr(self, "_oversampler_method"):
+                    desc["oversampler_method"] = self._oversampler
+
+            if undersampler_filename:
+                desc["undersampler_path"] = undersampler_filename
+                if hasattr(self, "_undersampler_method"):
+                    desc["undersampler_method"] = self._undersampler
 
             desc["final_loss"] = str(desc["final_loss"])
             if self._threshold is not None:

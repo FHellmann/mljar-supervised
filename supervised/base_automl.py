@@ -122,6 +122,9 @@ class BaseAutoML(BaseEstimator, ABC):
         # Attributes for oversampling
         self._oversampling_method = None
         self._oversampler = None
+        # Attributes for undersampling
+        self._undersampling_method = None
+        self._undersampler = None
 
     # TODO: alteration by Maleen
     def init_preprocessing_methods(self):
@@ -162,14 +165,25 @@ class BaseAutoML(BaseEstimator, ABC):
                 oversampling_class = PreprocessingRegistry.get_class(
                     self._oversampling_method
                 )
-                oversampling_params = PreprocessingRegistry.get_default_params(
-                    self._oversampling_method
-                ).copy()
 
-                self._oversampler = oversampling_class(**oversampling_params)
+                self._oversampler = oversampling_class()
                 print(f"DEBUG: Oversampler initialized: {self._oversampler}")
             except Exception as e:
                 print(f"Error initializing oversampler: {e}")
+
+        # Undersampling
+        if self._undersampling_method is None:
+            print("No undersampling method is set.")
+        else:
+            try:
+                undersampling_class = PreprocessingRegistry.get_class(
+                    self._undersampling_method
+                )
+
+                self._undersampler = undersampling_class()
+                print(f"DEBUG: Undersampler initialized: {self._undersampler}")
+            except Exception as e:
+                print(f"Error initializing undersampler: {e}")
 
     def _get_tuner_params(
         self, start_random_models, hill_climbing_steps, top_models_to_improve
